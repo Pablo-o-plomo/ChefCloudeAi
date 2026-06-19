@@ -1,0 +1,242 @@
+/* ─── ChefCloud — Global Styles ─────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --brand:        #16332b;
+  --brand-hover:  #1c4237;
+  --brand-light:  #eef4f1;
+  --gold:         #b99150;
+  --gold-light:   #f7f0e4;
+
+  --bg:           #f6f4f0;
+  --surface:      #ffffff;
+  --border:       #e8e2d8;
+  --border-light: #f0ebe2;
+
+  --text:         #1a1a1a;
+  --text-muted:   #6b6560;
+  --text-xmuted:  #a39f98;
+
+  --radius-sm:    8px;
+  --radius-md:    12px;
+  --radius-lg:    16px;
+  --radius-xl:    20px;
+  --radius-xxl:   24px;
+
+  --shadow-xs:    0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-sm:    0 2px 8px rgba(0,0,0,.07), 0 1px 3px rgba(0,0,0,.05);
+  --shadow-md:    0 4px 16px rgba(0,0,0,.08), 0 2px 6px rgba(0,0,0,.05);
+  --shadow-lg:    0 8px 32px rgba(0,0,0,.10), 0 4px 12px rgba(0,0,0,.06);
+
+  --ease:         cubic-bezier(.16, 1, .3, 1);
+}
+
+html, body, #root {
+  height: 100%;
+  min-height: 100vh;
+}
+
+body {
+  font-family: 'Inter', 'Manrope', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'kern' 1, 'liga' 1;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d4cfc8; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #bbb6ae; }
+
+/* ─── Elements ──────────────────────────────────────────────────────────── */
+input, select, button, textarea { font-family: inherit; }
+button { cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+
+/* ─── Animations ────────────────────────────────────────────────────────── */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInFast {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+/* ─── Utility classes ───────────────────────────────────────────────────── */
+
+.cc-fade-in   { animation: fadeIn   .22s var(--ease) both; }
+.cc-scale-in  { animation: scaleIn  .18s var(--ease) both; }
+.cc-slide-in  { animation: slideInLeft .20s var(--ease) both; }
+
+/* Stagger delays для списков карточек */
+.cc-stagger > *:nth-child(1)  { animation-delay: .00s; }
+.cc-stagger > *:nth-child(2)  { animation-delay: .04s; }
+.cc-stagger > *:nth-child(3)  { animation-delay: .08s; }
+.cc-stagger > *:nth-child(4)  { animation-delay: .12s; }
+.cc-stagger > *:nth-child(5)  { animation-delay: .16s; }
+.cc-stagger > *:nth-child(6)  { animation-delay: .20s; }
+.cc-stagger > *:nth-child(7)  { animation-delay: .24s; }
+.cc-stagger > *:nth-child(8)  { animation-delay: .28s; }
+.cc-stagger > *:nth-child(n+9){ animation-delay: .32s; }
+
+/* ─── Nav item hover ────────────────────────────────────────────────────── */
+
+.cc-nav-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background .12s ease, color .12s ease;
+  color: rgba(255,255,255,.55);
+  background: transparent;
+  position: relative;
+}
+
+.cc-nav-item:hover {
+  background: rgba(255,255,255,.07);
+  color: rgba(255,255,255,.90);
+}
+
+.cc-nav-item.active {
+  background: rgba(185,145,80,.15);
+  color: #fff;
+  font-weight: 700;
+}
+
+.cc-nav-item.active .cc-nav-dot {
+  opacity: 1;
+}
+
+.cc-nav-dot {
+  position: absolute;
+  left: 0; top: 50%;
+  transform: translateY(-50%);
+  width: 3px; height: 16px;
+  background: var(--gold);
+  border-radius: 0 2px 2px 0;
+  opacity: 0;
+  transition: opacity .15s;
+}
+
+/* ─── Card hover ────────────────────────────────────────────────────────── */
+
+.cc-card-hover {
+  transition: box-shadow .20s ease, transform .20s ease;
+}
+.cc-card-hover:hover {
+  box-shadow: 0 8px 32px rgba(0,0,0,.11), 0 2px 8px rgba(0,0,0,.06);
+  transform: translateY(-1px);
+}
+
+/* ─── Button hover ──────────────────────────────────────────────────────── */
+
+.cc-btn-primary:hover  { background: #1c4237 !important; box-shadow: 0 4px 14px rgba(22,51,43,.35) !important; }
+.cc-btn-secondary:hover{ background: #faf8f5 !important; border-color: #d4cfc8 !important; }
+.cc-btn-ghost:hover    { background: rgba(0,0,0,.04) !important; color: var(--text) !important; }
+.cc-btn-danger:hover   { background: #fef2f2 !important; border-color: #f87171 !important; }
+
+/* ─── Glassmorphism ──────────────────────────────────────────────────────── */
+
+.cc-glass {
+  background: rgba(255,255,255,.12);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,.18);
+}
+
+.cc-glass-dark {
+  background: rgba(22,51,43,.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,.10);
+}
+
+/* ─── Input focus ────────────────────────────────────────────────────────── */
+
+.cc-input:focus {
+  border-color: var(--brand) !important;
+  box-shadow: 0 0 0 3px rgba(22,51,43,.08) !important;
+  outline: none;
+}
+
+/* ─── Folder nav (Finder/Notion style) ──────────────────────────────────── */
+
+.cc-folder-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: #374151;
+  font-weight: 500;
+  font-size: 13px;
+  text-align: left;
+  width: 100%;
+  transition: background .12s ease;
+}
+.cc-folder-item:hover { background: rgba(22,51,43,.06); }
+.cc-folder-item.active {
+  background: var(--brand);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* ─── Stat card ──────────────────────────────────────────────────────────── */
+
+.cc-stat-card {
+  background: rgba(255,255,255,.10);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 18px;
+  padding: 20px 24px;
+  transition: background .18s;
+}
+.cc-stat-card:hover { background: rgba(255,255,255,.16); }
+
+/* ─── Section label ──────────────────────────────────────────────────────── */
+
+.cc-section-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.35);
+  padding: 14px 12px 6px;
+}
