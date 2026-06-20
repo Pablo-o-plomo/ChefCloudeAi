@@ -36,6 +36,15 @@ function readLegacyItems() {
   return []
 }
 
+function persistLocalCache(itemsToSave) {
+  if (!isBrowserStorageAvailable()) return
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(itemsToSave))
+  } catch (err) {
+    console.warn('Не удалось сохранить кэш ТТК в localStorage:', err)
+  }
+}
+
 function markMigrated() {
   if (!isBrowserStorageAvailable()) return
   localStorage.setItem(MIGRATED_KEY, 'true')
@@ -227,16 +236,22 @@ async function uploadPhotoIfNeeded(ttk) {
 }
 
 async function fetchRemoteItems() {
-  if (!supabase) return []
+  if (!supabase) return null
 
-  const { data, error } = await supabase
-    .from(TABLE_NAME)
-    .select('*')
-    .order('updated_at', { ascending: false })
+  let data, error
+  try {
+    ;({ data, error } = await supabase
+      .from(TABLE_NAME)
+      .select('*')
+      .order('updated_at', { ascending: false }))
+  } catch (err) {
+    console.warn('Не удалось загрузить ТТК из Supabase:', err)
+    return null
+  }
 
   if (error) {
     console.warn('Не удалось загрузить ТТК из Supabase:', error)
-    return []
+    return null
   }
 
   return (data || []).map(row => normalizeReferenceTtk({
@@ -311,16 +326,27 @@ async function migrateLegacyToSupabaseIfNeeded(remoteItems) {
 
 export function useReferenceTtkStore() {
   const [items, setItems] = useState([])
+  const [source, setSource] = useState('local')
 
   const reload = useCallback(async () => {
     if (!supabase) {
       setItems(readLegacyItems())
+      setSource('local')
       return
     }
 
     const remoteItems = await fetchRemoteItems()
+
+    if (remoteItems === null) {
+      setItems(readLegacyItems())
+      setSource('local')
+      return
+    }
+
     const finalItems = await migrateLegacyToSupabaseIfNeeded(remoteItems)
     setItems(finalItems)
+    setSource('supabase')
+    persistLocalCache(finalItems)
   }, [])
 
   useEffect(() => {
@@ -341,39 +367,53 @@ export function useReferenceTtkStore() {
 
     setItems(current => {
       const exists = current.some(item => item.id === clean.id)
-      return exists
+      const next = exists
         ? current.map(item => item.id === clean.id ? clean : item)
         : [{ ...clean, createdAt: clean.createdAt || now }, ...current]
+      persistLocalCache(next)
+      return next
     })
 
     upsertRemoteItem(clean).then(saved => {
-      setItems(current => current.map(item => item.id === saved.id ? saved : item))
+      setItems(current => {
+        const next = current.map(item => item.id === saved.id ? saved : item)
+        persistLocalCache(next)
+        return next
+      })
     })
 
     return clean
   }, [])
 
   const deleteTtk = useCallback(id => {
-    setItems(current => current.filter(item => item.id !== id))
+    setItems(current => {
+      const next = current.filter(item => item.id !== id)
+      persistLocalCache(next)
+      return next
+    })
     deleteRemoteItem(id)
   }, [])
 
   const duplicateTtk = useCallback(id => {
-    const source = items.find(item => item.id === id)
-    if (!source) return null
+    const original = items.find(item => item.id === id)
+    if (!original) return null
 
     const now = new Date().toISOString()
     const copy = {
-      ...source,
+      ...original,
       id: makeReferenceTtkId(),
-      title: `${source.title || 'ТТК'} — копия`,
+      title: `${original.title || 'ТТК'} — копия`,
       status: 'draft',
       archived: false,
       createdAt: now,
       updatedAt: now,
     }
 
-    setItems(current => [copy, ...current])
+    setItems(current => {
+      const next = [copy, ...current]
+      persistLocalCache(next)
+      return next
+    })
     upsertRemoteItem(copy)
 
     return copy
@@ -383,11 +423,15 @@ export function useReferenceTtkStore() {
     const now = new Date().toISOString()
     let changed = null
 
-    setItems(current => current.map(item => {
-      if (item.id !== id) return item
-      changed = { ...item, archived: true, updatedAt: now }
-      return changed
-    }))
+    setItems(current => {
+      const next = current.map(item => {
+        if (item.id !== id) return item
+        changed = { ...item, archived: true, updatedAt: now }
+        return changed
+      })
+      persistLocalCache(next)
+      return next
+    })
 
     setTimeout(() => {
       if (changed) upsertRemoteItem(changed)
@@ -398,11 +442,15 @@ export function useReferenceTtkStore() {
     const now = new Date().toISOString()
     let changed = null
 
-    setItems(current => current.map(item => {
-      if (item.id !== id) return item
-      changed = { ...item, archived: false, updatedAt: now }
-      return changed
-    }))
+    setItems(current => {
+      const next = current.map(item => {
+        if (item.id !== id) return item
+        changed = { ...item, archived: false, updatedAt: now }
+        return changed
+      })
+      persistLocalCache(next)
+      return next
+    })
 
     setTimeout(() => {
       if (changed) upsertRemoteItem(changed)
@@ -421,7 +469,9 @@ export function useReferenceTtkStore() {
     setItems(current => {
       const byId = new Map(current.map(item => [item.id, item]))
       normalized.forEach(item => byId.set(item.id, item))
-      return Array.from(byId.values())
+      const next = Array.from(byId.values())
+      persistLocalCache(next)
+      return next
     })
 
     normalized.forEach(item => {
@@ -441,5 +491,7 @@ export function useReferenceTtkStore() {
     exportAll,
     importAll,
     reload,
+    source,
+    isRemote: source === 'supabase',
   }
 }
