@@ -1,14 +1,14 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 
-// Демо-данные для дашборда — только для отображения, не влияют на реальные данные
+// Р”РµРјРѕ-РґР°РЅРЅС‹Рµ РґР»СЏ РґР°С€Р±РѕСЂРґР° вЂ” С‚РѕР»СЊРєРѕ РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ, РЅРµ РІР»РёСЏСЋС‚ РЅР° СЂРµР°Р»СЊРЅС‹Рµ РґР°РЅРЅС‹Рµ
 const RECENT_DEMO = [
-  { title: 'Ролл Дракон', category: 'Роллы', status: 'approved', output: '280 г', time: '3 мин', color: '#0f4c35' },
-  { title: 'Том Ям с креветкой', category: 'Супы', status: 'approved', output: '350 мл', time: '5 мин', color: '#1a3a5c' },
-  { title: 'Тартар из лосося', category: 'Холодные', status: 'review', output: '180 г', time: '4 мин', color: '#3d1a5c' },
-  { title: 'Поке с тунцом', category: 'Горячее', status: 'approved', output: '320 г', time: '6 мин', color: '#4c2a0f' },
+  { title: 'Р РѕР»Р» Р”СЂР°РєРѕРЅ', category: 'Р РѕР»Р»С‹', status: 'approved', output: '280 Рі', time: '3 РјРёРЅ', color: '#0f4c35' },
+  { title: 'РўРѕРј РЇРј СЃ РєСЂРµРІРµС‚РєРѕР№', category: 'РЎСѓРїС‹', status: 'approved', output: '350 РјР»', time: '5 РјРёРЅ', color: '#1a3a5c' },
+  { title: 'РўР°СЂС‚Р°СЂ РёР· Р»РѕСЃРѕСЃСЏ', category: 'РҐРѕР»РѕРґРЅС‹Рµ', status: 'review', output: '180 Рі', time: '4 РјРёРЅ', color: '#3d1a5c' },
+  { title: 'РџРѕРєРµ СЃ С‚СѓРЅС†РѕРј', category: 'Р“РѕСЂСЏС‡РµРµ', status: 'approved', output: '320 Рі', time: '6 РјРёРЅ', color: '#4c2a0f' },
 ]
 
-const STATUS_LABEL = { approved: 'Утверждено', review: 'На проверке', draft: 'Черновик' }
+const STATUS_LABEL = { approved: 'РЈС‚РІРµСЂР¶РґРµРЅРѕ', review: 'РќР° РїСЂРѕРІРµСЂРєРµ', draft: 'Р§РµСЂРЅРѕРІРёРє' }
 const STATUS_COLOR = { approved: '#16a34a', review: '#d97706', draft: '#6b7280' }
 const STATUS_BG    = { approved: '#f0fdf4', review: '#fffbeb', draft: '#f9fafb' }
 
@@ -72,10 +72,10 @@ function ActivityRow({ item, i }) {
         background: `linear-gradient(135deg, ${item.color}22, ${item.color}44)`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 18,
-      }}>🍽️</div>
+      }}>рџЌЅпёЏ</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 700, fontSize: 13.5, color: '#1a1a1a', letterSpacing: '-.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</div>
-        <div style={{ fontSize: 12, color: '#a39f98', marginTop: 2 }}>{item.category} · {item.output} · {item.time}</div>
+        <div style={{ fontSize: 12, color: '#a39f98', marginTop: 2 }}>{item.category} В· {item.output} В· {item.time}</div>
       </div>
       <div style={{
         fontSize: 11, fontWeight: 700,
@@ -116,14 +116,14 @@ function QuickAction({ icon, label, desc, onClick, accent = '#16332b' }) {
   )
 }
 
-export default function PremiumDashboard({ items, semifinished, products, categories, trial, onNavigate }) {
+export default function PremiumDashboard({ items, isRemote, semifinished, products, categories, trial, onNavigate }) {
   const today = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
   const lastUpdated = items.length > 0
     ? (() => {
         const sorted = [...items].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
-        return sorted[0]?.updatedAt ? new Date(sorted[0].updatedAt).toLocaleDateString('ru-RU') : '—'
+        return sorted[0]?.updatedAt ? new Date(sorted[0].updatedAt).toLocaleDateString('ru-RU') : 'вЂ”'
       })()
-    : '—'
+    : 'вЂ”'
 
   const approved = items.filter(i => i.status === 'approved').length
   const recentItems = items.length > 0
@@ -133,7 +133,7 @@ export default function PremiumDashboard({ items, semifinished, products, catego
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }} className="cc-fade-in">
 
-      {/* ── Hero ─────────────────────────────────────────────────── */}
+      {/* в”Ђв”Ђ Hero в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ */}
       <div style={{
         background: 'linear-gradient(135deg, #0f2219 0%, #16332b 50%, #102820 100%)',
         borderRadius: 28,
@@ -152,15 +152,15 @@ export default function PremiumDashboard({ items, semifinished, products, catego
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
               <div style={{ width:8, height:8, borderRadius:'50%', background:'#4ade80', boxShadow:'0 0 8px #4ade80' }} />
               <span style={{ fontSize:11.5, color:'rgba(255,255,255,.5)', fontWeight:600, letterSpacing:'.06em', textTransform:'uppercase' }}>
-                Система активна
+                РЎРёСЃС‚РµРјР° Р°РєС‚РёРІРЅР°
               </span>
             </div>
             <h1 style={{ margin:'0 0 10px', fontSize:34, fontWeight:900, letterSpacing:'-.05em', lineHeight:1.05 }}>
-              Добро пожаловать<br />
-              <span style={{ color:'#b99150' }}>в ChefCloud</span>
+              Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ<br />
+              <span style={{ color:'#b99150' }}>РІ ChefCloud</span>
             </h1>
             <p style={{ margin:0, color:'rgba(255,255,255,.5)', fontSize:13.5, lineHeight:1.7, maxWidth:420 }}>
-              {today} · {items.length > 0 ? `${items.length} блюд в базе` : 'Начните с создания первого блюда'}
+              {today} В· {items.length > 0 ? `${items.length} Р±Р»СЋРґ РІ Р±Р°Р·Рµ` : 'РќР°С‡РЅРёС‚Рµ СЃ СЃРѕР·РґР°РЅРёСЏ РїРµСЂРІРѕРіРѕ Р±Р»СЋРґР°'}
             </p>
           </div>
           <div style={{ display:'flex', gap:10 }}>
@@ -172,7 +172,7 @@ export default function PremiumDashboard({ items, semifinished, products, catego
                 color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer',
                 backdropFilter:'blur(8px)', transition:'all .18s',
               }}
-            >🍽️ Открыть меню</button>
+            >рџЌЅпёЏ РћС‚РєСЂС‹С‚СЊ РјРµРЅСЋ</button>
             <button
               onClick={() => onNavigate('ai')}
               style={{
@@ -181,20 +181,20 @@ export default function PremiumDashboard({ items, semifinished, products, catego
                 border:'none', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer',
                 boxShadow:'0 4px 16px rgba(185,145,80,.4)', transition:'all .18s',
               }}
-            >🤖 AI Ассистент</button>
+            >рџ¤– AI РђСЃСЃРёСЃС‚РµРЅС‚</button>
           </div>
         </div>
 
-        {/* KPI стекло */}
+        {/* KPI СЃС‚РµРєР»Рѕ */}
         <div style={{
           position:'relative', zIndex:1,
           display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginTop:32,
         }}>
           {[
-            { label:'Блюд в меню',      value:items.length,       icon:'↗', sub:'карточек' },
-            { label:'Утверждено',        value:approved,           icon:'', sub:'финальных' },
-            { label:'Полуфабрикатов',   value:semifinished.length, icon:'≡', sub:'позиций' },
-            { label:'На складе',        value:products.length,    icon:'', sub:'товаров' },
+            { label:'Р‘Р»СЋРґ РІ РјРµРЅСЋ',      value:items.length,       icon:'в†—', sub:'РєР°СЂС‚РѕС‡РµРє' },
+            { label:'РЈС‚РІРµСЂР¶РґРµРЅРѕ',        value:approved,           icon:'', sub:'С„РёРЅР°Р»СЊРЅС‹С…' },
+            { label:'РџРѕР»СѓС„Р°Р±СЂРёРєР°С‚РѕРІ',   value:semifinished.length, icon:'в‰Ў', sub:'РїРѕР·РёС†РёР№' },
+            { label:'РќР° СЃРєР»Р°РґРµ',        value:products.length,    icon:'', sub:'С‚РѕРІР°СЂРѕРІ' },
           ].map(s => (
             <div key={s.label} style={{
               background:'rgba(255,255,255,.07)',
@@ -211,56 +211,56 @@ export default function PremiumDashboard({ items, semifinished, products, catego
         </div>
       </div>
 
-      {/* ── Основная сетка ────────────────────────────────────────── */}
+      {/* в”Ђв”Ђ РћСЃРЅРѕРІРЅР°СЏ СЃРµС‚РєР° в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ */}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 360px', gap:20, alignItems:'start' }}>
 
-        {/* Левая колонка */}
+        {/* Р›РµРІР°СЏ РєРѕР»РѕРЅРєР° */}
         <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
 
-          {/* Последние блюда */}
+          {/* РџРѕСЃР»РµРґРЅРёРµ Р±Р»СЋРґР° */}
           <div style={{ background:'#fff', border:'1px solid #ede9e0', borderRadius:24, overflow:'hidden', boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
             <div style={{ padding:'20px 24px 8px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
               <div>
                 <div style={{ fontWeight:800, fontSize:16, color:'#1a1a1a', letterSpacing:'-.02em' }}>
-                  {items.length > 0 ? 'Последние блюда' : 'Демо-блюда'}
+                  {items.length > 0 ? 'РџРѕСЃР»РµРґРЅРёРµ Р±Р»СЋРґР°' : 'Р”РµРјРѕ-Р±Р»СЋРґР°'}
                 </div>
                 <div style={{ fontSize:12, color:'#a39f98', marginTop:2 }}>
-                  {items.length > 0 ? `Обновлено ${lastUpdated}` : 'Добавьте первые блюда через раздел Меню'}
+                  {items.length > 0 ? `РћР±РЅРѕРІР»РµРЅРѕ ${lastUpdated}` : 'Р”РѕР±Р°РІСЊС‚Рµ РїРµСЂРІС‹Рµ Р±Р»СЋРґР° С‡РµСЂРµР· СЂР°Р·РґРµР» РњРµРЅСЋ'}
                 </div>
               </div>
               <button
                 onClick={() => onNavigate('list')}
                 style={{ fontSize:12.5, fontWeight:700, color:'#16332b', background:'#eef4f1', border:'none', borderRadius:10, padding:'7px 14px', cursor:'pointer' }}
-              >Все блюда →</button>
+              >Р’СЃРµ Р±Р»СЋРґР° в†’</button>
             </div>
             <div style={{ padding:'8px 8px 12px' }}>
               {recentItems.map((item, i) => <ActivityRow key={item.id || i} item={item} i={i} />)}
             </div>
           </div>
 
-          {/* Быстрые действия */}
+          {/* Р‘С‹СЃС‚СЂС‹Рµ РґРµР№СЃС‚РІРёСЏ */}
           <div>
-            <div style={{ fontWeight:800, fontSize:16, color:'#1a1a1a', letterSpacing:'-.02em', marginBottom:14 }}>Быстрые действия</div>
+            <div style={{ fontWeight:800, fontSize:16, color:'#1a1a1a', letterSpacing:'-.02em', marginBottom:14 }}>Р‘С‹СЃС‚СЂС‹Рµ РґРµР№СЃС‚РІРёСЏ</div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              <QuickAction icon="🍽️" label="Новое блюдо" desc="Создать карточку блюда с фото и составом" onClick={() => onNavigate('create')} accent="#16332b" />
-              <QuickAction icon="🤖" label="AI Ассистент" desc="Сгенерировать описание или технологию" onClick={() => onNavigate('ai')} accent="#7c3aed" />
-              <QuickAction icon="🥣" label="Добавить П/Ф" desc="Новый полуфабрикат в базу" onClick={() => onNavigate('semifinished')} accent="#0f4c35" />
-              <QuickAction icon="💾" label="Резервная копия" desc="Экспортировать все данные" onClick={() => onNavigate('settings')} accent="#b99150" />
+              <QuickAction icon="рџЌЅпёЏ" label="РќРѕРІРѕРµ Р±Р»СЋРґРѕ" desc="РЎРѕР·РґР°С‚СЊ РєР°СЂС‚РѕС‡РєСѓ Р±Р»СЋРґР° СЃ С„РѕС‚Рѕ Рё СЃРѕСЃС‚Р°РІРѕРј" onClick={() => onNavigate('create')} accent="#16332b" />
+              <QuickAction icon="рџ¤–" label="AI РђСЃСЃРёСЃС‚РµРЅС‚" desc="РЎРіРµРЅРµСЂРёСЂРѕРІР°С‚СЊ РѕРїРёСЃР°РЅРёРµ РёР»Рё С‚РµС…РЅРѕР»РѕРіРёСЋ" onClick={() => onNavigate('ai')} accent="#7c3aed" />
+              <QuickAction icon="рџҐЈ" label="Р”РѕР±Р°РІРёС‚СЊ Рџ/Р¤" desc="РќРѕРІС‹Р№ РїРѕР»СѓС„Р°Р±СЂРёРєР°С‚ РІ Р±Р°Р·Сѓ" onClick={() => onNavigate('semifinished')} accent="#0f4c35" />
+              <QuickAction icon="рџ’ѕ" label="Р РµР·РµСЂРІРЅР°СЏ РєРѕРїРёСЏ" desc="Р­РєСЃРїРѕСЂС‚РёСЂРѕРІР°С‚СЊ РІСЃРµ РґР°РЅРЅС‹Рµ" onClick={() => onNavigate('settings')} accent="#b99150" />
             </div>
           </div>
         </div>
 
-        {/* Правая колонка */}
+        {/* РџСЂР°РІР°СЏ РєРѕР»РѕРЅРєР° */}
         <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
-          {/* Статус системы */}
+          {/* РЎС‚Р°С‚СѓСЃ СЃРёСЃС‚РµРјС‹ */}
           <div style={{ background:'#fff', border:'1px solid #ede9e0', borderRadius:24, padding:'22px 24px', boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
-            <div style={{ fontWeight:800, fontSize:15, color:'#1a1a1a', marginBottom:18, letterSpacing:'-.02em' }}>Статус системы</div>
+            <div style={{ fontWeight:800, fontSize:15, color:'#1a1a1a', marginBottom:18, letterSpacing:'-.02em' }}>РЎС‚Р°С‚СѓСЃ СЃРёСЃС‚РµРјС‹</div>
             {[
-              { label:'Локальное хранение', status:'Активно', ok:true, icon:'⊙' },
-              { label:'Данные блюд', status:items.length > 0 ? `${items.length} записей` : 'Пусто', ok:items.length > 0, icon:'🗂️' },
-              { label:'Резервная копия', status:'Настройте', ok:false, icon:'🔒' },
-              { label:'AI Ассистент', status:'Ожидает API', ok:false, icon:'✦' },
+              { label:'Хранилище данных', status: isRemote ? 'Supabase (облако)' : 'окально (офлайн)', ok: isRemote, icon:'⊙' },
+              { label:'Р”Р°РЅРЅС‹Рµ Р±Р»СЋРґ', status:items.length > 0 ? `${items.length} Р·Р°РїРёСЃРµР№` : 'РџСѓСЃС‚Рѕ', ok:items.length > 0, icon:'рџ—‚пёЏ' },
+              { label:'Р РµР·РµСЂРІРЅР°СЏ РєРѕРїРёСЏ', status:'РќР°СЃС‚СЂРѕР№С‚Рµ', ok:false, icon:'рџ”’' },
+              { label:'AI РђСЃСЃРёСЃС‚РµРЅС‚', status:'РћР¶РёРґР°РµС‚ API', ok:false, icon:'вњ¦' },
             ].map(row => (
               <div key={row.label} style={{ display:'flex', alignItems:'center', gap:12, marginBottom:14 }}>
                 <div style={{ width:32, height:32, borderRadius:10, background:row.ok ? '#f0fdf4' : '#f9fafb', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, flexShrink:0 }}>{row.icon}</div>
@@ -273,13 +273,13 @@ export default function PremiumDashboard({ items, semifinished, products, catego
             ))}
           </div>
 
-          {/* Статистика меню */}
+          {/* РЎС‚Р°С‚РёСЃС‚РёРєР° РјРµРЅСЋ */}
           <div style={{ background:'linear-gradient(135deg,#16332b,#1f4438)', borderRadius:24, padding:'22px 24px', color:'#fff' }}>
-            <div style={{ fontWeight:800, fontSize:15, marginBottom:18, opacity:.9 }}>Меню</div>
+            <div style={{ fontWeight:800, fontSize:15, marginBottom:18, opacity:.9 }}>РњРµРЅСЋ</div>
             {[
-              { label:'Утверждено', value:approved, total:items.length, color:'#4ade80' },
-              { label:'На проверке', value:items.filter(i=>i.status==='review').length, total:items.length, color:'#fbbf24' },
-              { label:'Черновики', value:items.filter(i=>i.status==='draft').length, total:items.length, color:'#94a3b8' },
+              { label:'РЈС‚РІРµСЂР¶РґРµРЅРѕ', value:approved, total:items.length, color:'#4ade80' },
+              { label:'РќР° РїСЂРѕРІРµСЂРєРµ', value:items.filter(i=>i.status==='review').length, total:items.length, color:'#fbbf24' },
+              { label:'Р§РµСЂРЅРѕРІРёРєРё', value:items.filter(i=>i.status==='draft').length, total:items.length, color:'#94a3b8' },
             ].map(row => (
               <div key={row.label} style={{ marginBottom:14 }}>
                 <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
@@ -299,12 +299,12 @@ export default function PremiumDashboard({ items, semifinished, products, catego
             <button
               onClick={() => onNavigate('list')}
               style={{ width:'100%', marginTop:8, padding:'10px', borderRadius:12, border:'1px solid rgba(255,255,255,.15)', background:'rgba(255,255,255,.08)', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer' }}
-            >Открыть меню →</button>
+            >РћС‚РєСЂС‹С‚СЊ РјРµРЅСЋ в†’</button>
           </div>
         </div>
       </div>
 
-      {/* ── Trial banner ── */}
+      {/* в”Ђв”Ђ Trial banner в”Ђв”Ђ */}
       {trial && !trial.expired && trial.plan !== 'pro' && (
         <div style={{
           background: trial.daysLeft <= 2
@@ -315,13 +315,13 @@ export default function PremiumDashboard({ items, semifinished, products, catego
         }}>
           <div>
             <div style={{ fontSize:11, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', opacity:.6, marginBottom:4 }}>
-              Пробный период
+              РџСЂРѕР±РЅС‹Р№ РїРµСЂРёРѕРґ
             </div>
             <div style={{ fontWeight:800, fontSize:17, letterSpacing:'-.02em' }}>
-              {trial.daysLeft === 0 ? 'Истекает сегодня' : `Осталось ${trial.daysLeft} ${trial.daysLeft === 1 ? 'день' : trial.daysLeft < 5 ? 'дня' : 'дней'}`}
+              {trial.daysLeft === 0 ? 'РСЃС‚РµРєР°РµС‚ СЃРµРіРѕРґРЅСЏ' : `РћСЃС‚Р°Р»РѕСЃСЊ ${trial.daysLeft} ${trial.daysLeft === 1 ? 'РґРµРЅСЊ' : trial.daysLeft < 5 ? 'РґРЅСЏ' : 'РґРЅРµР№'}`}
             </div>
             <div style={{ fontSize:12.5, opacity:.6, marginTop:3 }}>
-              Полный доступ ко всем функциям · Данные сохранятся после окончания
+              РџРѕР»РЅС‹Р№ РґРѕСЃС‚СѓРї РєРѕ РІСЃРµРј С„СѓРЅРєС†РёСЏРј В· Р”Р°РЅРЅС‹Рµ СЃРѕС…СЂР°РЅСЏС‚СЃСЏ РїРѕСЃР»Рµ РѕРєРѕРЅС‡Р°РЅРёСЏ
             </div>
           </div>
           <button onClick={() => onNavigate('pricing')} style={{
@@ -329,11 +329,11 @@ export default function PremiumDashboard({ items, semifinished, products, catego
             background:'linear-gradient(135deg,#b99150,#d4aa6a)',
             color:'#fff', fontWeight:800, fontSize:13.5, cursor:'pointer',
             boxShadow:'0 4px 14px rgba(185,145,80,.4)', whiteSpace:'nowrap',
-          }}>Перейти на Pro →</button>
+          }}>РџРµСЂРµР№С‚Рё РЅР° Pro в†’</button>
         </div>
       )}
 
-      {/* ── Trial expired ── */}
+      {/* в”Ђв”Ђ Trial expired в”Ђв”Ђ */}
       {trial && trial.expired && trial.plan !== 'pro' && (
         <div style={{
           background:'linear-gradient(135deg,#7f1d1d,#991b1b)',
@@ -341,9 +341,9 @@ export default function PremiumDashboard({ items, semifinished, products, catego
           display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:12,
         }}>
           <div>
-            <div style={{ fontWeight:800, fontSize:17 }}>Пробный период завершён</div>
+            <div style={{ fontWeight:800, fontSize:17 }}>РџСЂРѕР±РЅС‹Р№ РїРµСЂРёРѕРґ Р·Р°РІРµСЂС€С‘РЅ</div>
             <div style={{ fontSize:13, opacity:.7, marginTop:4 }}>
-              Все данные сохранены. Для создания и редактирования активируйте Pro.
+              Р’СЃРµ РґР°РЅРЅС‹Рµ СЃРѕС…СЂР°РЅРµРЅС‹. Р”Р»СЏ СЃРѕР·РґР°РЅРёСЏ Рё СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ Р°РєС‚РёРІРёСЂСѓР№С‚Рµ Pro.
             </div>
           </div>
           <button onClick={() => onNavigate('pricing')} style={{
@@ -351,25 +351,25 @@ export default function PremiumDashboard({ items, semifinished, products, catego
             background:'linear-gradient(135deg,#b99150,#d4aa6a)',
             color:'#fff', fontWeight:800, fontSize:13.5, cursor:'pointer',
             boxShadow:'0 4px 14px rgba(185,145,80,.4)',
-          }}>Активировать Pro</button>
+          }}>РђРєС‚РёРІРёСЂРѕРІР°С‚СЊ Pro</button>
         </div>
       )}
 
-      {/* ── Onboarding — показываем только когда данных нет ── */}
+      {/* в”Ђв”Ђ Onboarding вЂ” РїРѕРєР°Р·С‹РІР°РµРј С‚РѕР»СЊРєРѕ РєРѕРіРґР° РґР°РЅРЅС‹С… РЅРµС‚ в”Ђв”Ђ */}
       {items.length === 0 && semifinished.length === 0 && (
         <div style={{ background:'#fff', border:'1px solid #e8e2d8', borderRadius:24, padding:'28px 32px', boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
           <div style={{ fontWeight:800, fontSize:17, color:'#1a1a1a', letterSpacing:'-.03em', marginBottom:6 }}>
-            Добро пожаловать в ChefCloud
+            Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ РІ ChefCloud
           </div>
           <div style={{ fontSize:13.5, color:'#a39f98', marginBottom:20, lineHeight:1.6 }}>
-            Начните работу — создайте базу знаний вашего ресторана за несколько шагов.
+            РќР°С‡РЅРёС‚Рµ СЂР°Р±РѕС‚Сѓ вЂ” СЃРѕР·РґР°Р№С‚Рµ Р±Р°Р·Сѓ Р·РЅР°РЅРёР№ РІР°С€РµРіРѕ СЂРµСЃС‚РѕСЂР°РЅР° Р·Р° РЅРµСЃРєРѕР»СЊРєРѕ С€Р°РіРѕРІ.
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
             {[
-              { n:1, title:'Создайте первое блюдо', desc:'Название, фото, состав, технология и стандарт подачи', action:'create', btn:'Создать блюдо' },
-              { n:2, title:'Добавьте полуфабрикат', desc:'База заготовок для быстрой сборки блюд', action:'semifinished', btn:'Добавить П/Ф' },
-              { n:3, title:'Создайте производственный план', desc:'Задания на смену с отметками выполнения', action:'production', btn:'Открыть' },
-              { n:4, title:'Распечатайте ТТК', desc:'Карточки А4 для кухни и обучения персонала', action:'print', btn:'Открыть' },
+              { n:1, title:'РЎРѕР·РґР°Р№С‚Рµ РїРµСЂРІРѕРµ Р±Р»СЋРґРѕ', desc:'РќР°Р·РІР°РЅРёРµ, С„РѕС‚Рѕ, СЃРѕСЃС‚Р°РІ, С‚РµС…РЅРѕР»РѕРіРёСЏ Рё СЃС‚Р°РЅРґР°СЂС‚ РїРѕРґР°С‡Рё', action:'create', btn:'РЎРѕР·РґР°С‚СЊ Р±Р»СЋРґРѕ' },
+              { n:2, title:'Р”РѕР±Р°РІСЊС‚Рµ РїРѕР»СѓС„Р°Р±СЂРёРєР°С‚', desc:'Р‘Р°Р·Р° Р·Р°РіРѕС‚РѕРІРѕРє РґР»СЏ Р±С‹СЃС‚СЂРѕР№ СЃР±РѕСЂРєРё Р±Р»СЋРґ', action:'semifinished', btn:'Р”РѕР±Р°РІРёС‚СЊ Рџ/Р¤' },
+              { n:3, title:'РЎРѕР·РґР°Р№С‚Рµ РїСЂРѕРёР·РІРѕРґСЃС‚РІРµРЅРЅС‹Р№ РїР»Р°РЅ', desc:'Р—Р°РґР°РЅРёСЏ РЅР° СЃРјРµРЅСѓ СЃ РѕС‚РјРµС‚РєР°РјРё РІС‹РїРѕР»РЅРµРЅРёСЏ', action:'production', btn:'РћС‚РєСЂС‹С‚СЊ' },
+              { n:4, title:'Р Р°СЃРїРµС‡Р°С‚Р°Р№С‚Рµ РўРўРљ', desc:'РљР°СЂС‚РѕС‡РєРё Рђ4 РґР»СЏ РєСѓС…РЅРё Рё РѕР±СѓС‡РµРЅРёСЏ РїРµСЂСЃРѕРЅР°Р»Р°', action:'print', btn:'РћС‚РєСЂС‹С‚СЊ' },
             ].map(step => (
               <div key={step.n} style={{ display:'flex', alignItems:'center', gap:16, padding:'14px 16px', borderRadius:16, background:'#faf8f4', border:'1px solid #f0ebe2' }}>
                 <div style={{
