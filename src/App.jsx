@@ -223,6 +223,7 @@ export default function App() {
   const {
     items, saveTtk, deleteTtk, duplicateTtk,
     archiveTtk, restoreTtk, exportAll, importAll,
+    source, isRemote,
   } = useReferenceTtkStore()
 
   const { categories, addCategory } = useTtkCategoriesStore()
@@ -527,6 +528,7 @@ export default function App() {
           {section === 'home' && (
             <PremiumDashboard
               items={items}
+              isRemote={isRemote}
               semifinished={semifinished}
               products={products}
               categories={categories}
