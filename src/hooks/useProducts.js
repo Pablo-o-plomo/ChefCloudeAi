@@ -19,6 +19,11 @@ export function createEmptyProduct() {
     unit: 'г',
     category: '',
     categoryPath: '',
+    type: '',
+    proteinPer100: '',
+    fatPer100: '',
+    carbsPer100: '',
+    caloriesPer100: '',
     comment: '',
     createdAt: now,
     updatedAt: now,
@@ -34,13 +39,41 @@ export function normalizeProduct(item = {}) {
     unit: item.unit || item['Ед. изм.'] || item['Ед изм'] || item.measure || 'г',
     category: item.category || item['Категория'] || item.group || '',
     categoryPath: item.categoryPath || item['Путь категории'] || item['Группа'] || item.category || '',
+    type: item.type || '',
+    proteinPer100: item.proteinPer100 !== undefined ? item.proteinPer100 : '',
+    fatPer100: item.fatPer100 !== undefined ? item.fatPer100 : '',
+    carbsPer100: item.carbsPer100 !== undefined ? item.carbsPer100 : '',
+    caloriesPer100: item.caloriesPer100 !== undefined ? item.caloriesPer100 : '',
     comment: item.comment || item['Комментарий'] || item.description || '',
     createdAt: item.createdAt || now,
     updatedAt: item.updatedAt || now,
   }
 }
 
+async function loadSeedData() {
+  try {
+    const response = await fetch('/data/products-seed.json')
+    if (!response.ok) return []
+    const data = await response.json()
+    return Array.isArray(data) ? data.map(normalizeProduct) : []
+  } catch {
+    return []
+  }
+}
+
 function readProducts() {
+  try {
+    const raw = localStorage.getItem(PRODUCTS_STORAGE_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    const normalized = Array.isArray(parsed) ? parsed.map(normalizeProduct) : []
+    return normalized
+  } catch {
+    return []
+  }
+}
+
+function readProductsSync() {
+  // Синхронная версия для useEffect
   try {
     const raw = localStorage.getItem(PRODUCTS_STORAGE_KEY)
     const parsed = raw ? JSON.parse(raw) : []
@@ -58,7 +91,23 @@ export function useProductsStore() {
   const [items, setItems] = useState([])
 
   useEffect(() => {
-    setItems(readProducts())
+    const init = async () => {
+      const localItems = readProductsSync()
+
+      // Если локальных товаров нет, загружаем seed
+      if (localItems.length === 0) {
+        const seedItems = await loadSeedData()
+        if (seedItems.length > 0) {
+          setItems(seedItems)
+          writeProducts(seedItems)
+          return
+        }
+      }
+
+      setItems(localItems)
+    }
+
+    init()
   }, [])
 
   const persist = useCallback(updater => {

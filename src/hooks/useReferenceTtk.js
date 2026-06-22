@@ -7,6 +7,10 @@ const MIGRATED_KEY = 'academy_printable_reference_ttk_migrated_v1'
 const TABLE_NAME = 'reference_ttk'
 const PHOTO_BUCKET = 'reference-ttk-photos'
 
+// Сообщение для пользователя, когда запись/удаление в Supabase не удалось,
+// но локальная (optimistic) копия данных уже сохранена.
+export const SYNC_ERROR_MESSAGE = 'Не удалось синхронизировать с облаком. Данные сохранены локально.'
+
 export const TTK_STATUSES = ['draft', 'review', 'approved']
 
 const EMPTY_ROW = { qty: '', unit: '', name: '', type: 'product', description: '' }
@@ -218,6 +222,11 @@ async function uploadPhotoIfNeeded(ttk) {
 
     if (!publicUrl) return ttk
 
+    // ВАЖНО: dataUrl фото НЕ удаляем из локального/UI-объекта — везде в интерфейсе
+    // (карточки, форма, печать) фото показывается именно по photo.dataUrl. Если его
+    // стереть здесь, фото визуально "пропадает" сразу после успешной загрузки в Supabase,
+    // хотя файл на самом деле загрузился. url добавляем дополнительно как ссылку на Storage —
+    // он используется только при отправке записи в Supabase (см. upsertRemoteItem ниже).
     return {
       ...ttk,
       imageUrl: publicUrl,
@@ -225,9 +234,7 @@ async function uploadPhotoIfNeeded(ttk) {
       photo: {
         ...(typeof ttk.photo === 'object' && ttk.photo ? ttk.photo : {}),
         url: publicUrl,
-        dataUrl: undefined,
       },
-      image: undefined,
     }
   } catch (err) {
     console.warn('Не удалось загрузить фото ТТК в Supabase Storage:', err)
@@ -263,29 +270,39 @@ async function fetchRemoteItems() {
   }))
 }
 
-async function upsertRemoteItem(ttk) {
+async function upsertRemoteItem(ttk, { onError } = {}) {
   if (!supabase) return ttk
 
   const itemWithPhoto = await uploadPhotoIfNeeded(ttk)
   const normalized = normalizeReferenceTtk(itemWithPhoto)
+
+  // В саму запись Supabase dataUrl (большая base64-строка) не отправляем — фото уже
+  // в Storage, ссылка на него в photo.url. Это касается ТОЛЬКО payload-а запроса:
+  // normalized (то, что уходит в локальный стейт/localStorage и в UI) остаётся
+  // нетронутым, с полным photo.dataUrl, поэтому фото не пропадает с экрана.
+  const remotePhoto = normalized.photo && typeof normalized.photo === 'object'
+    ? { ...normalized.photo, dataUrl: undefined }
+    : normalized.photo
+  const remoteData = { ...normalized, photo: remotePhoto, image: undefined }
 
   const { error } = await supabase
     .from(TABLE_NAME)
     .upsert({
       id: normalized.id,
       title: normalized.title,
-      data: normalized,
+      data: remoteData,
       updated_at: normalized.updatedAt,
     })
 
   if (error) {
     console.warn('Не удалось сохранить ТТК в Supabase:', error)
+    onError?.(error)
   }
 
   return normalized
 }
 
-async function deleteRemoteItem(id) {
+async function deleteRemoteItem(id, { onError } = {}) {
   if (!supabase) return
 
   const { error } = await supabase
@@ -295,6 +312,7 @@ async function deleteRemoteItem(id) {
 
   if (error) {
     console.warn('Не удалось удалить ТТК из Supabase:', error)
+    onError?.(error)
   }
 }
 
@@ -327,6 +345,17 @@ async function migrateLegacyToSupabaseIfNeeded(remoteItems) {
 export function useReferenceTtkStore() {
   const [items, setItems] = useState([])
   const [source, setSource] = useState('local')
+  const [syncError, setSyncError] = useState(null)
+
+  // Вызывается, когда запись/удаление в Supabase завершилось ошибкой.
+  // Локальные данные при этом уже сохранены (optimistic write не ломается).
+  const handleSyncError = useCallback(() => {
+    setSyncError(SYNC_ERROR_MESSAGE)
+  }, [])
+
+  const clearSyncError = useCallback(() => {
+    setSyncError(null)
+  }, [])
 
   const reload = useCallback(async () => {
     if (!supabase) {
@@ -374,7 +403,8 @@ export function useReferenceTtkStore() {
       return next
     })
 
-    upsertRemoteItem(clean).then(saved => {
+    clearSyncError()
+    upsertRemoteItem(clean, { onError: handleSyncError }).then(saved => {
       setItems(current => {
         const next = current.map(item => item.id === saved.id ? saved : item)
         persistLocalCache(next)
@@ -383,7 +413,7 @@ export function useReferenceTtkStore() {
     })
 
     return clean
-  }, [])
+  }, [clearSyncError, handleSyncError])
 
   const deleteTtk = useCallback(id => {
     setItems(current => {
@@ -391,8 +421,9 @@ export function useReferenceTtkStore() {
       persistLocalCache(next)
       return next
     })
-    deleteRemoteItem(id)
-  }, [])
+    clearSyncError()
+    deleteRemoteItem(id, { onError: handleSyncError })
+  }, [clearSyncError, handleSyncError])
 
   const duplicateTtk = useCallback(id => {
     const original = items.find(item => item.id === id)
@@ -414,10 +445,11 @@ export function useReferenceTtkStore() {
       persistLocalCache(next)
       return next
     })
-    upsertRemoteItem(copy)
+    clearSyncError()
+    upsertRemoteItem(copy, { onError: handleSyncError })
 
     return copy
-  }, [items])
+  }, [items, clearSyncError, handleSyncError])
 
   const archiveTtk = useCallback(id => {
     const now = new Date().toISOString()
@@ -433,10 +465,11 @@ export function useReferenceTtkStore() {
       return next
     })
 
+    clearSyncError()
     setTimeout(() => {
-      if (changed) upsertRemoteItem(changed)
+      if (changed) upsertRemoteItem(changed, { onError: handleSyncError })
     }, 0)
-  }, [])
+  }, [clearSyncError, handleSyncError])
 
   const restoreTtk = useCallback(id => {
     const now = new Date().toISOString()
@@ -452,10 +485,11 @@ export function useReferenceTtkStore() {
       return next
     })
 
+    clearSyncError()
     setTimeout(() => {
-      if (changed) upsertRemoteItem(changed)
+      if (changed) upsertRemoteItem(changed, { onError: handleSyncError })
     }, 0)
-  }, [])
+  }, [clearSyncError, handleSyncError])
 
   const exportAll = useCallback(() => {
     return items
@@ -474,12 +508,13 @@ export function useReferenceTtkStore() {
       return next
     })
 
+    clearSyncError()
     normalized.forEach(item => {
-      upsertRemoteItem(item)
+      upsertRemoteItem(item, { onError: handleSyncError })
     })
 
     return normalized.length
-  }, [])
+  }, [clearSyncError, handleSyncError])
 
   return {
     items,
@@ -493,5 +528,7 @@ export function useReferenceTtkStore() {
     reload,
     source,
     isRemote: source === 'supabase',
+    syncError,
+    clearSyncError,
   }
 }

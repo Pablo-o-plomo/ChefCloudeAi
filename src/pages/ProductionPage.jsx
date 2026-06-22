@@ -13,18 +13,133 @@ function writeTasks(tasks) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)) } catch {}
 }
 
-const SEED_TASKS = [
-  { id:'t1', name:'Соус Том Ям',       qty:'5 кг',  station:'Горячий цех',   time:'09:00', done:false, priority:'high' },
-  { id:'t2', name:'Рис для суши',       qty:'8 кг',  station:'Суши-бар',      time:'09:30', done:false, priority:'high' },
-  { id:'t3', name:'Нарезка лосося',     qty:'4 кг',  station:'Холодный цех',  time:'10:00', done:false, priority:'high' },
-  { id:'t4', name:'Авокадо (нарезка)', qty:'3 кг',  station:'Заготовочный',  time:'10:30', done:false, priority:'medium' },
-]
+const SEED_TASKS = []
 
 const PRIORITY_COLOR = { high:'#dc2626', medium:'#d97706', low:'#16a34a' }
 const PRIORITY_LABEL = { high:'Срочно',  medium:'Обычный',  low:'Низкий' }
 const STATIONS = ['Горячий цех','Холодный цех','Суши-бар','Заготовочный','Кондитерский','Бар']
 
 function makeId() { return 't_' + Date.now() + '_' + Math.random().toString(36).slice(2,6) }
+
+// ─── Печать производственного листа в отдельном окне ───────────────────────
+// Не используем @media print/CSS-трюки на текущей DOM-странице приложения —
+// они нестабильны в превью печати (зависит от лежащих рядом сайдбара/шапки,
+// от их позиционирования и видимости). Вместо этого собираем полностью
+// самостоятельный HTML-документ и печатаем его в новом окне через window.print().
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[ch]))
+}
+
+function buildTaskHtml(task, idx) {
+  const name = escapeHtml(task.name)
+  const station = escapeHtml(task.station || '—')
+  const qty = escapeHtml(task.qty || '—')
+  const time = escapeHtml(task.time || '—')
+
+  return `
+    <div class="task">
+      <div class="task-head">
+        <span class="checkbox">&#9744;</span>
+        <span class="num">${idx + 1}.</span>
+        <span class="name">${name}</span>
+        <span class="meta">Цех: ${station}</span>
+        <span class="meta">План: ${qty}</span>
+        <span class="meta">Время: ${time}</span>
+      </div>
+
+      <div class="label">Исходное сырьё / ТТК</div>
+      <div class="line"></div>
+
+      <div class="label">Исходный вес</div>
+      <div class="line short"></div>
+
+      <div class="label strong">Получено после проработки</div>
+      <div class="got">1. <span class="fill"></span> Вес <span class="fill-short"></span></div>
+      <div class="got">2. <span class="fill"></span> Вес <span class="fill-short"></span></div>
+      <div class="got">3. <span class="fill"></span> Вес <span class="fill-short"></span></div>
+      <div class="got">4. <span class="fill"></span> Вес <span class="fill-short"></span></div>
+
+      <div class="label strong">Итоговый выход</div>
+      <div class="line short"></div>
+
+      <div class="label">Потери / отход</div>
+      <div class="line short"></div>
+
+      <div class="label">Комментарий</div>
+      <div class="line wide"></div>
+      <div class="line wide"></div>
+    </div>
+  `
+}
+
+function buildProductionPlanHtml(tasks) {
+  const printDate = new Date().toLocaleDateString('ru-RU')
+  const total = tasks.length
+  const tasksHtml = total === 0
+    ? `<div class="empty">На текущую смену производственных задач нет.</div>`
+    : tasks.map((task, idx) => buildTaskHtml(task, idx)).join('')
+
+  return `<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<title>Производственный лист</title>
+<style>
+  @page { size: A4 portrait; margin: 12mm; }
+  body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #111; }
+  .page { width: 100%; box-sizing: border-box; }
+  .header { text-align: center; margin-bottom: 5mm; }
+  .brand { font-size: 13pt; font-weight: bold; margin: 0; }
+  .brand-sub { font-size: 8pt; letter-spacing: 1.5px; color: #444; margin: 0.5mm 0 0; }
+  .title { font-size: 14pt; font-weight: bold; letter-spacing: 1px; margin: 2.5mm 0 0; }
+  .meta-row { display: flex; justify-content: space-between; align-items: flex-start; margin: 6mm 0 5mm; font-size: 10pt; border-top: 1px solid #111; border-bottom: 1px solid #111; padding: 3mm 0; }
+  .meta-left div { margin: 0 0 1.5mm; }
+  .meta-right { text-align: right; }
+  .sign-line { display: inline-block; border-bottom: 1px solid #111; width: 50mm; margin-top: 5mm; }
+  .task { border: 1px solid #111; border-radius: 8px; padding: 12px; margin-bottom: 12px; page-break-inside: avoid; break-inside: avoid; }
+  .task-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; border-bottom: 0.5pt solid #111; padding-bottom: 8px; margin-bottom: 10px; }
+  .checkbox { font-size: 14pt; line-height: 1; }
+  .num { font-size: 9pt; color: #444; }
+  .name { font-size: 12pt; font-weight: bold; margin-right: auto; }
+  .meta { font-size: 9.5pt; color: #333; }
+  .label { font-size: 10pt; margin: 0 0 4px; }
+  .label.strong { font-weight: bold; margin-top: 8px; }
+  .line { border-bottom: 0.5pt solid #111; height: 14px; margin: 0 0 8px; }
+  .line.short { max-width: 60mm; }
+  .line.wide { max-width: 100%; }
+  .got { font-size: 10pt; margin: 0 0 6px; padding-left: 10px; }
+  .fill { display: inline-block; border-bottom: 0.5pt solid #111; width: 65mm; }
+  .fill-short { display: inline-block; border-bottom: 0.5pt solid #111; width: 24mm; }
+  .empty { text-align: center; font-size: 13pt; margin-top: 60mm; }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="brand">ChefCloud</div>
+      <div class="brand-sub">KITCHEN OS</div>
+      <div class="title">ПРОИЗВОДСТВЕННЫЙ ЛИСТ</div>
+    </div>
+
+    <div class="meta-row">
+      <div class="meta-left">
+        <div>Дата: ${printDate}</div>
+        <div>Всего задач: ${total}</div>
+      </div>
+      <div class="meta-right">
+        <div>Ответственный:</div>
+        <div class="sign-line">&nbsp;</div>
+      </div>
+    </div>
+
+    ${tasksHtml}
+  </div>
+</body>
+</html>`
+}
 
 // ─── Форма добавления задачи ─────────────────────────────────────────────────
 function AddTaskModal({ onSave, onClose }) {
@@ -140,7 +255,24 @@ export default function ProductionPage() {
     setTasks(prev => prev.filter(t => t.id !== id))
   }
 
-  function printPlan() { window.print() }
+  // Печать в отдельном окне: формируем самостоятельный HTML-документ и печатаем
+  // его через window.print() в новом окне — без CSS-трюков на текущей DOM-странице
+  // приложения (никакого position:fixed/absolute, никакого скрытия body/aside/header).
+  function printProductionPlan() {
+    const html = buildProductionPlanHtml(tasks)
+    const printWindow = window.open('', '_blank')
+
+    if (!printWindow) {
+      window.alert('Не удалось открыть окно печати. Разрешите всплывающие окна для этого сайта и попробуйте снова.')
+      return
+    }
+
+    printWindow.document.write(html)
+    printWindow.document.close()
+    printWindow.onafterprint = () => printWindow.close()
+    printWindow.focus()
+    printWindow.print()
+  }
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:24 }} className="cc-fade-in">
@@ -155,7 +287,7 @@ export default function ProductionPage() {
         </div>
         <div style={{ display:'flex', gap:10 }}>
           <button
-            onClick={printPlan}
+            onClick={printProductionPlan}
             style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:14, border:'1px solid #ede9e0', background:'#fff', color:'#1a1a1a', fontWeight:700, fontSize:13, cursor:'pointer' }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>

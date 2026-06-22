@@ -244,7 +244,26 @@ function DishCard({ dish, onAdd, onExclude, inMenu }) {
 }
 
 // ─── Шаги ─────────────────────────────────────────────────────────────────────
-const STEPS = ['Параметры', 'Анализ AI', 'Результат', 'Итоговое меню']
+const STEPS = ['Концепция ресторана', 'Анализ базы ТТК', 'Menu Engineering', 'Итоговое меню']
+
+// ─── Возможности AI Menu Engineering ──────────────────────────────────────────
+const CAPABILITIES = [
+  'Подбор блюд из существующей базы ТТК',
+  'Формирование структуры меню',
+  'Контроль food cost',
+  'Контроль маржинальности',
+  'Выявление дублирующих позиций',
+  'Балансировка категорий',
+  'Поиск слабых мест меню',
+  'Рекомендации по новым блюдам',
+  'Подготовка меню для запуска ресторана',
+]
+
+// Категории-разделы меню, которые должны быть в сбалансированном меню — те же
+// ключи, что использует mockAiAnalyze() при поиске пробелов (gaps). Нужны здесь
+// только для отображения в "Отчёте операционного директора" (какие именно
+// разделы не хватает) — на саму логику анализа не влияет.
+const MENU_SECTION_NAMES = ['Закуски / Холодные', 'Салаты', 'Супы', 'Горячие блюда', 'Десерты', 'Напитки']
 
 const CONCEPT_OPTIONS = [
   'Рыбный ресторан', 'Средиземноморская кухня', 'Гастробар',
@@ -280,8 +299,203 @@ export default function MenuArchitectPage({ items = [], collections = [], onCrea
   const [analyzing, setAnalyzing] = useState(false)
   const [selectedCollections, setSelectedCollections] = useState([])
   const [savedCollection, setSavedCollection] = useState(null)
+  const [dishPrices, setDishPrices] = useState({}) // id → цена
 
   const set = (k,v) => setParams(p => ({...p, [k]:v}))
+  const setPrice = (dishId, price) => setDishPrices(prev => ({ ...prev, [dishId]: price }))
+
+  // Печать меню-карты в отдельном окне (не текущая страница)
+  function printFinalMenu() {
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      window.alert('Не удалось открыть окно печати. Разрешите всплывающие окна.')
+      return
+    }
+
+    const today = new Date().toLocaleDateString('ru-RU')
+
+    // Получить КБЖУ из карточки (если есть)
+    const getKBZhU = (dish) => {
+      const kcal = dish.calories || dish.kcal || null
+      const protein = dish.protein || dish.proteinG || null
+      const fat = dish.fat || dish.fatG || null
+      const carbs = dish.carbs || dish.carbsG || null
+
+      if (!kcal && !protein && !fat && !carbs) return null
+
+      const parts = []
+      if (kcal) parts.push(`${kcal} ккал`)
+      if (protein) parts.push(`Б ${protein}`)
+      if (fat) parts.push(`Ж ${fat}`)
+      if (carbs) parts.push(`У ${carbs}`)
+
+      return parts.join(' / ')
+    }
+
+    // Получить описание блюда
+    const getDescription = (dish) => {
+      return dish.dishDescription || dish.description || dish.shortDescription || null
+    }
+
+    // Получить выход/граммовку
+    const getOutput = (dish) => {
+      return dish.output || dish.portion || dish.gramming || null
+    }
+
+    // Меню-карта HTML
+    const menuHtml = Object.entries(menuByCategory)
+      .map(([category, dishes]) => {
+        return `
+          <div class="menu-section">
+            <h2 class="section-title">${category}</h2>
+            <div class="dishes">
+              ${dishes.map(dish => {
+                const price = dishPrices[dish.id] || ''
+                const description = getDescription(dish)
+                const output = getOutput(dish)
+                const kbzhu = getKBZhU(dish)
+
+                return `
+                  <div class="dish">
+                    <div class="dish-header">
+                      <div class="dish-title">${dish.title || 'Без названия'}</div>
+                      <div class="dish-price">${price ? `${price} ₽` : '_____ ₽'}</div>
+                    </div>
+                    ${description ? `<div class="dish-description">${description}</div>` : ''}
+                    ${(output || kbzhu) ? `<div class="dish-meta">
+                      ${output ? `Выход: ${output}` : ''}
+                      ${output && kbzhu ? ' · ' : ''}
+                      ${kbzhu ? `КБЖУ: ${kbzhu}` : ''}
+                    </div>` : ''}
+                  </div>
+                `
+              }).join('')}
+            </div>
+          </div>
+        `
+      })
+      .join('')
+
+    const html = `<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<title>${params.menuName || 'Меню'}</title>
+<style>
+  @page { size: A4 portrait; margin: 15mm 20mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    color: #111;
+    background: #fff;
+    line-height: 1.6;
+  }
+
+  .menu-header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #ddd;
+  }
+
+  .menu-title {
+    font-size: 32pt;
+    font-weight: bold;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+  }
+
+  .menu-concept {
+    font-size: 13pt;
+    color: #555;
+    font-style: italic;
+    margin-bottom: 8px;
+  }
+
+  .menu-date {
+    font-size: 10pt;
+    color: #999;
+  }
+
+  .menu-section {
+    margin-bottom: 30px;
+    page-break-inside: avoid;
+  }
+
+  .section-title {
+    font-size: 12pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #333;
+    margin-bottom: 15px;
+    margin-top: 20px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+  }
+
+  .dishes {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .dish {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .dish-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 3px;
+  }
+
+  .dish-title {
+    font-size: 12pt;
+    font-weight: bold;
+    color: #1a1a1a;
+  }
+
+  .dish-price {
+    font-size: 12pt;
+    font-weight: bold;
+    color: #1a1a1a;
+    margin-left: 20px;
+    flex-shrink: 0;
+  }
+
+  .dish-description {
+    font-size: 10pt;
+    color: #555;
+    font-style: italic;
+    margin-bottom: 3px;
+  }
+
+  .dish-meta {
+    font-size: 9pt;
+    color: #888;
+  }
+</style>
+</head>
+<body>
+  <div class="menu-header">
+    <div class="menu-title">${params.menuName || 'Меню'}</div>
+    ${params.concept ? `<div class="menu-concept">${params.concept}</div>` : ''}
+    <div class="menu-date">Сформировано ${today}</div>
+  </div>
+
+  ${menuHtml}
+</body>
+</html>`
+
+    printWindow.document.write(html)
+    printWindow.document.close()
+    printWindow.focus()
+    // Небольшая задержка для рендера перед печатью
+    setTimeout(() => printWindow.print(), 500)
+  }
 
   function runAnalysis() {
     setAnalyzing(true)
@@ -319,6 +533,47 @@ export default function MenuArchitectPage({ items = [], collections = [], onCrea
     [result, excluded]
   )
 
+  // Отчёт операционного директора — собирается из тех же данных, что и сводка
+  // выше (result/params/items), без изменения логики mockAiAnalyze(). Только
+  // дополнительная агрегация для презентации результата на уровне "готовое
+  // коммерческое меню", а не просто список блюд.
+  const directorReport = useMemo(() => {
+    if (!result) return null
+
+    const missingCategories = result.gaps
+      .filter(g => MENU_SECTION_NAMES.includes(g.category))
+      .map(g => g.category)
+
+    const strongDishes = [...filteredRecommended]
+      .sort((a, b) => (b.aiScore || 0) - (a.aiScore || 0))
+      .slice(0, 3)
+
+    const weakDishes = [...filteredNotRec]
+      .sort((a, b) => (a.aiScore || 0) - (b.aiScore || 0))
+      .slice(0, 3)
+
+    const approvedShare = filteredRecommended.length > 0
+      ? filteredRecommended.filter(d => d.status === 'approved').length / filteredRecommended.length
+      : 0
+    const marginForecast = approvedShare >= 0.7
+      ? 'Хороший потенциал — большинство позиций утверждены и готовы к запуску'
+      : approvedShare >= 0.4
+        ? 'Средний потенциал — часть карточек нужно утвердить и проверить состав'
+        : 'Требует внимания — большинство карточек в черновиках, точный расчёт маржи появится после утверждения'
+
+    return {
+      concept: params.concept || params.cuisineType || '—',
+      recommendedDishCount: params.dishCount || '—',
+      dishesInBase: items.length,
+      missingCategories,
+      foodCostTarget: params.foodCostLimit ? `до ${params.foodCostLimit}% (целевой лимит)` : 'не задан',
+      marginForecast,
+      strongDishes,
+      weakDishes,
+      recommendations: result.gaps.map(g => g.suggestion),
+    }
+  }, [result, params, items, filteredRecommended, filteredNotRec])
+
   // Группировка итогового меню по категориям
   const menuByCategory = useMemo(() => {
     const groups = {}
@@ -338,22 +593,51 @@ export default function MenuArchitectPage({ items = [], collections = [], onCrea
         <div>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
             <SparkleIcon style={{ color:'#b99150' }} />
-            <span style={{ fontSize:11.5, fontWeight:700, color:'#b99150', letterSpacing:'.08em', textTransform:'uppercase' }}>AI Menu Architect</span>
+            <span style={{ fontSize:11.5, fontWeight:700, color:'#b99150', letterSpacing:'.08em', textTransform:'uppercase' }}>Для операционного директора</span>
           </div>
-          <h1 style={{ fontSize:26, fontWeight:900, color:'#1a1a1a', letterSpacing:'-.04em', margin:'0 0 6px' }}>Конструктор меню</h1>
+          <h1 style={{ fontSize:26, fontWeight:900, color:'#1a1a1a', letterSpacing:'-.04em', margin:'0 0 6px' }}>AI Menu Engineering</h1>
           <p style={{ fontSize:13.5, color:'#a39f98', margin:0 }}>
-            {items.length > 0
-              ? `Анализирует ${items.length} блюд из вашей базы. Не добавляет блюда, которых нет в системе.`
-              : 'Добавьте блюда в раздел Меню, чтобы AI мог их проанализировать.'
-            }
+            Соберите оптимальное меню на основе существующих ТТК и рекомендаций AI.
           </p>
         </div>
         {step > 0 && step < 3 && (
-          <button onClick={() => { setStep(0); setResult(null); setMenuItems([]); setExcluded([]) }} style={btnSecondary}>
+          <button onClick={() => { setStep(0); setResult(null); setMenuItems([]); setExcluded([]); setDishPrices({}) }} style={btnSecondary}>
             <ArrowLeftIcon /> Начать заново
           </button>
         )}
       </div>
+
+      {/* ── Что делает AI Menu Engineering ── */}
+      {step === 0 && (
+        <div style={{ ...card(), padding:'22px 26px', background:'#faf8f4' }}>
+          <div style={{ fontWeight:800, fontSize:15, color:'#1a1a1a', marginBottom:10 }}>Что делает AI Menu Engineering</div>
+          <p style={{ fontSize:13.5, color:'#5a564f', lineHeight:1.7, margin:'0 0 8px' }}>
+            Система анализирует существующие ТТК, категории блюд, структуру меню и помогает сформировать
+            сбалансированное меню под выбранную концепцию ресторана.
+          </p>
+          <p style={{ fontSize:13.5, color:'#5a564f', lineHeight:1.7, margin:'0 0 8px', fontWeight:700 }}>
+            AI не создаёт новые блюда автоматически.
+          </p>
+          <p style={{ fontSize:13.5, color:'#5a564f', lineHeight:1.7, margin:0 }}>
+            Если необходимых блюд нет в базе ChefCloud, система показывает рекомендации по их разработке и добавлению.
+          </p>
+        </div>
+      )}
+
+      {/* ── Возможности ── */}
+      {step === 0 && (
+        <div style={{ ...card(), padding:'22px 26px' }}>
+          <div style={{ fontWeight:800, fontSize:15, color:'#1a1a1a', marginBottom:14 }}>Возможности</div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 }}>
+            {CAPABILITIES.map(cap => (
+              <div key={cap} style={{ display:'flex', alignItems:'flex-start', gap:8, fontSize:13, color:'#374151' }}>
+                <CheckCircleIcon style={{ color:'#16a34a', flexShrink:0, marginTop:1, width:15, height:15 }} />
+                <span style={{ lineHeight:1.5 }}>{cap}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Прогресс-шаги ── */}
       <div style={{ display:'flex', gap:0, alignItems:'center' }}>
@@ -566,6 +850,65 @@ export default function MenuArchitectPage({ items = [], collections = [], onCrea
             ))}
           </div>
 
+          {/* Отчёт операционного директора */}
+          {directorReport && (
+            <div style={{ ...card(), padding:'24px 28px' }}>
+              <div style={{ fontWeight:800, fontSize:16, color:'#1a1a1a', marginBottom:4 }}>Отчёт операционного директора</div>
+              <div style={{ fontSize:12.5, color:'#a39f98', marginBottom:18 }}>Итог анализа базы ТТК — основа для коммерческого меню, а не просто список блюд</div>
+
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+                <div>
+                  <div style={label}>Концепция</div>
+                  <div style={{ fontSize:13.5, color:'#1a1a1a', marginBottom:14 }}>{directorReport.concept}</div>
+
+                  <div style={label}>Рекомендуемое количество блюд</div>
+                  <div style={{ fontSize:13.5, color:'#1a1a1a', marginBottom:14 }}>{directorReport.recommendedDishCount}</div>
+
+                  <div style={label}>Количество блюд в базе</div>
+                  <div style={{ fontSize:13.5, color:'#1a1a1a', marginBottom:14 }}>{directorReport.dishesInBase}</div>
+
+                  <div style={label}>Не хватает категорий</div>
+                  <div style={{ fontSize:13.5, color:'#1a1a1a', marginBottom:14 }}>
+                    {directorReport.missingCategories.length > 0 ? directorReport.missingCategories.join(', ') : 'Все ключевые категории покрыты'}
+                  </div>
+
+                  <div style={label}>Средний food cost</div>
+                  <div style={{ fontSize:13.5, color:'#1a1a1a' }}>{directorReport.foodCostTarget}</div>
+                </div>
+
+                <div>
+                  <div style={label}>Прогноз маржинальности</div>
+                  <div style={{ fontSize:13.5, color:'#1a1a1a', marginBottom:14, lineHeight:1.6 }}>{directorReport.marginForecast}</div>
+
+                  <div style={label}>Сильные позиции</div>
+                  <div style={{ fontSize:13.5, color:'#1a1a1a', marginBottom:14 }}>
+                    {directorReport.strongDishes.length > 0
+                      ? directorReport.strongDishes.map(d => d.title || 'Без названия').join(', ')
+                      : '—'}
+                  </div>
+
+                  <div style={label}>Слабые позиции</div>
+                  <div style={{ fontSize:13.5, color:'#1a1a1a' }}>
+                    {directorReport.weakDishes.length > 0
+                      ? directorReport.weakDishes.map(d => d.title || 'Без названия').join(', ')
+                      : '—'}
+                  </div>
+                </div>
+              </div>
+
+              {directorReport.recommendations.length > 0 && (
+                <div style={{ marginTop:18, paddingTop:16, borderTop:'1px solid #f0ebe2' }}>
+                  <div style={label}>Рекомендации</div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                    {directorReport.recommendations.map((rec, i) => (
+                      <div key={i} style={{ fontSize:13, color:'#5a564f', lineHeight:1.6 }}>· {rec}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Пробелы */}
           {result.gaps.length > 0 && (
             <div style={{ ...card(), padding:'20px 24px' }}>
@@ -651,6 +994,9 @@ export default function MenuArchitectPage({ items = [], collections = [], onCrea
           <div style={{ ...card(), padding:'24px 28px' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
               <div>
+                <div style={{ fontSize:11, fontWeight:800, color:'#b99150', letterSpacing:'.08em', textTransform:'uppercase', marginBottom:6 }}>
+                  Готовое коммерческое меню ресторана
+                </div>
                 <div style={{ fontWeight:900, fontSize:18, color:'#1a1a1a', letterSpacing:'-.03em' }}>
                   {params.menuName || 'Итоговое меню'}
                 </div>
@@ -663,9 +1009,9 @@ export default function MenuArchitectPage({ items = [], collections = [], onCrea
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                   PDF — скоро
                 </div>
-                <button onClick={() => window.print()} style={{ ...btnSecondary, fontSize:12.5, display:'inline-flex', alignItems:'center', gap:6 }}>
+                <button onClick={printFinalMenu} style={{ ...btnSecondary, fontSize:12.5, display:'inline-flex', alignItems:'center', gap:6 }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                  Печать
+                  Печать меню-карты
                 </button>
               </div>
             </div>
@@ -679,7 +1025,7 @@ export default function MenuArchitectPage({ items = [], collections = [], onCrea
                   </div>
                   <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                     {dishes.map(dish => (
-                      <div key={dish.id} style={{ display:'flex', alignItems:'center', gap:14, padding:'10px 14px', borderRadius:12, background:'#faf8f4' }}>
+                      <div key={dish.id} style={{ display:'flex', alignItems:'flex-start', gap:14, padding:'10px 14px', borderRadius:12, background:'#faf8f4' }}>
                         <div style={{ width:36, height:36, borderRadius:10, background:'#f0ebe2', flexShrink:0, overflow:'hidden' }}>
                           {dish.photo?.dataUrl
                             ? <img src={dish.photo.dataUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
@@ -690,14 +1036,31 @@ export default function MenuArchitectPage({ items = [], collections = [], onCrea
                         </div>
                         <div style={{ flex:1 }}>
                           <div style={{ fontWeight:700, fontSize:13.5, color:'#1a1a1a' }}>{dish.title}</div>
-                          {dish.output && <div style={{ fontSize:12, color:'#a39f98' }}>Выход: {dish.output}</div>}
+                          {dish.dishDescription && <div style={{ fontSize:12, color:'#a39f98', marginTop:2, fontStyle:'italic' }}>{dish.dishDescription}</div>}
+                          {dish.output && <div style={{ fontSize:12, color:'#a39f98', marginTop:2 }}>Выход: {dish.output}</div>}
                         </div>
-                        <button
-                          onClick={() => excludeDish(dish)}
-                          style={{ background:'none', border:'none', cursor:'pointer', color:'#a39f98', padding:4 }}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                        </button>
+                        <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end', flexShrink:0 }}>
+                          <label style={{ display:'flex', flexDirection:'column', gap:3, alignItems:'flex-end' }}>
+                            <span style={{ fontSize:10, fontWeight:700, color:'#a39f98' }}>Цена</span>
+                            <input
+                              type="text"
+                              value={dishPrices[dish.id] || ''}
+                              onChange={(e) => setPrice(dish.id, e.target.value)}
+                              placeholder="—"
+                              style={{
+                                width:80, padding:'6px 10px', borderRadius:8, border:'1.5px solid #e8e2d8',
+                                fontSize:13, fontWeight:700, textAlign:'right', background:'#fff', color:'#1a1a1a'
+                              }}
+                            />
+                          </label>
+                          <button
+                            onClick={() => excludeDish(dish)}
+                            style={{ background:'none', border:'none', cursor:'pointer', color:'#a39f98', padding:4 }}
+                            title="Удалить блюдо из меню"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -735,7 +1098,7 @@ export default function MenuArchitectPage({ items = [], collections = [], onCrea
             </div>
           </div>
 
-          <button onClick={() => { setStep(0); setResult(null); setMenuItems([]); setExcluded([]) }} style={{ ...btnSecondary, alignSelf:'flex-start' }}>
+          <button onClick={() => { setStep(0); setResult(null); setMenuItems([]); setExcluded([]); setDishPrices({}) }} style={{ ...btnSecondary, alignSelf:'flex-start' }}>
             <ArrowLeftIcon /> Создать новое меню
           </button>
         </div>
