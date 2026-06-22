@@ -137,12 +137,13 @@ export default function BackupSection({ onDataRestored }) {
   const importRef     = useRef(null)
   const restoreRef    = useRef(null)
 
-  function buildFilename(prefix) {
-    const d = new Date()
-    const pad = n => String(n).padStart(2, '0')
-    const datePart = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
-    const timePart = `${pad(d.getHours())}-${pad(d.getMinutes())}`
-    return `ChefCloud_${prefix}_${datePart}_${timePart}.json`
+  // Единый формат имени файла бэкапа: ChefCloud-Backup-YYYY-MM-DD.json.
+  // Параметр prefix больше не используется в имени файла (раньше различал
+  // "экспорт"/"бэкап" через подчёркивание и добавлял время) — оставлен в сигнатуре,
+  // чтобы не трогать вызовы buildFilename(...) ниже.
+  function buildFilename() {
+    const datePart = new Date().toISOString().slice(0, 10)
+    return `ChefCloud-Backup-${datePart}.json`
   }
 
   // Кнопка 1 — «Экспорт всей базы»
@@ -179,7 +180,7 @@ export default function BackupSection({ onDataRestored }) {
       if (!data._backup || data._backup.app !== 'ChefCloud') {
         setStatus({
           type: 'error',
-          message: 'Это не файл резервной копии ChefCloud. Выберите файл, созданный через «Экспорт всей базы» или «Создать резервную копию».',
+          message: 'Это не файл резервной копии ChefCloud. Выберите файл, созданный через «Экспорт данных» или «Создать резервную копию».',
         })
         return
       }
@@ -233,7 +234,7 @@ export default function BackupSection({ onDataRestored }) {
       if (!data._backup || data._backup.app !== 'ChefCloud') {
         setStatus({
           type: 'error',
-          message: 'Это не файл резервной копии ChefCloud. Выберите файл, созданный через «Создать резервную копию» или «Экспорт всей базы».',
+          message: 'Это не файл резервной копии ChefCloud. Выберите файл, созданный через «Создать резервную копию» или «Экспорт данных».',
         })
         return
       }
@@ -280,34 +281,21 @@ export default function BackupSection({ onDataRestored }) {
         />
       )}
 
+      {/* Резервная копия — создать копию всех данных / восстановить из файла.
+          Обработчики (handleCreateBackup/handleRestoreClick/...) не менялись —
+          поменялось только расположение и подписи карточек. */}
       <div style={CARD}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
           <span style={{ fontSize: 24 }}>💾</span>
-          <h2 style={{ margin: 0, fontSize: 18, color: '#16332b' }}>Резервное копирование</h2>
+          <h2 style={{ margin: 0, fontSize: 18, color: '#16332b' }}>Резервная копия</h2>
         </div>
 
         <p style={{ color: '#64748b', fontSize: 13.5, margin: '0 0 20px', lineHeight: 1.6 }}>
-          Полный бэкап всех данных: блюда (с фотографиями), полуфабрикаты, товары, категории и номенклатура — в одном JSON-файле.
+          Полная копия всех данных: блюда (с фотографиями), полуфабрикаты, товары, категории и номенклатура — в одном файле.
           Храните файл резервной копии на внешнем диске или в облаке.
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-          <ActionCard
-            emoji="📤"
-            title="Экспорт всей базы"
-            desc="Скачать все данные в один JSON-файл. Фото включены как base64."
-            onClick={handleExportAll}
-            btnLabel="Экспорт"
-            btnStyle={BTN_SEC}
-          />
-          <ActionCard
-            emoji="📥"
-            title="Импорт всей базы"
-            desc="Загрузить данные из JSON-файла. Режим: слияние — текущие данные не удаляются."
-            onClick={handleImportClick}
-            btnLabel="Импорт"
-            btnStyle={BTN_SEC}
-          />
           <ActionCard
             emoji="💾"
             title="Создать резервную копию"
@@ -318,11 +306,44 @@ export default function BackupSection({ onDataRestored }) {
           />
           <ActionCard
             emoji="♻️"
-            title="Восстановить из резервной копии"
-            desc="Загрузить бэкап. Перед восстановлением будет запрошено подтверждение режима (слияние или полная замена)."
+            title="Восстановить из файла"
+            desc="Загрузить файл резервной копии. Перед восстановлением будет запрошено подтверждение режима (слияние или полная замена)."
             onClick={handleRestoreClick}
             btnLabel="Восстановить"
             btnStyle={BTN_DANGER}
+          />
+        </div>
+      </div>
+
+      {/* Импорт и экспорт — то же самое слияние всех данных, но без метки времени
+          в имени файла. Обработчики (handleExportAll/handleImportClick/...) те же,
+          что и раньше, только переименованы подписи и убрано слово "JSON". */}
+      <div style={CARD}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+          <span style={{ fontSize: 24 }}>🔁</span>
+          <h2 style={{ margin: 0, fontSize: 18, color: '#16332b' }}>Импорт и экспорт</h2>
+        </div>
+
+        <p style={{ color: '#64748b', fontSize: 13.5, margin: '0 0 20px', lineHeight: 1.6 }}>
+          Перенос данных одним файлом — например, на другой компьютер или другому сотруднику.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+          <ActionCard
+            emoji="📤"
+            title="Экспорт данных"
+            desc="Скачать все данные в один файл. Фото сохраняются внутри файла."
+            onClick={handleExportAll}
+            btnLabel="Экспорт"
+            btnStyle={BTN_SEC}
+          />
+          <ActionCard
+            emoji="📥"
+            title="Импорт данных"
+            desc="Загрузить данные из файла. Режим: слияние — текущие данные не удаляются."
+            onClick={handleImportClick}
+            btnLabel="Импорт"
+            btnStyle={BTN_SEC}
           />
         </div>
 

@@ -163,7 +163,7 @@ export function NomenclaturePage({ items, onSave, onDelete, onImport }) {
           <div style={{ color:'#64748b', fontSize:14 }}>Справочник товаров, полуфабрикатов, соусов и заготовок для быстрого заполнения ТТК. JSON: id, name, type, category, categoryPath, unit, description, composition, cookingMethod, output.</div>
         </div>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-          <button onClick={() => downloadJson('klevo_nomenclature.json', items)} style={SEL_ST}>Экспорт JSON</button>
+          <button onClick={() => downloadJson(`ChefCloud-Nomenclature-${new Date().toISOString().slice(0, 10)}.json`, items)} style={SEL_ST}>Экспорт JSON</button>
           <label style={SEL_ST}>Импорт JSON<input type="file" accept=".json,application/json" onChange={e => handleImport(e.target.files?.[0])} style={{ display:'none' }} /></label>
           <button onClick={startCreate} style={PRIMARY}>Добавить позицию</button>
         </div>
@@ -182,7 +182,6 @@ export function NomenclaturePage({ items, onSave, onDelete, onImport }) {
       <section style={SECTION}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
           <h2 style={{ margin:0 }}>Позиции ({filtered.length})</h2>
-          <div style={{ color:'#64748b', fontSize:12 }}>localStorage key: <b>klevo_nomenclature</b></div>
         </div>
 
         {filtered.length === 0 ? (

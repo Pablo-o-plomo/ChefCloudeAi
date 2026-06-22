@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 
 // Демо-данные для дашборда — только для отображения, не влияют на реальные данные
 const RECENT_DEMO = [
@@ -116,7 +116,7 @@ function QuickAction({ icon, label, desc, onClick, accent = '#16332b' }) {
   )
 }
 
-export default function PremiumDashboard({ items, semifinished, products, categories, trial, onNavigate }) {
+export default function PremiumDashboard({ items, isRemote, semifinished, products, categories, trial, onNavigate }) {
   const today = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
   const lastUpdated = items.length > 0
     ? (() => {
@@ -194,7 +194,7 @@ export default function PremiumDashboard({ items, semifinished, products, catego
             { label:'Блюд в меню',      value:items.length,       icon:'↗', sub:'карточек' },
             { label:'Утверждено',        value:approved,           icon:'', sub:'финальных' },
             { label:'Полуфабрикатов',   value:semifinished.length, icon:'≡', sub:'позиций' },
-            { label:'На складе',        value:products.length,    icon:'', sub:'товаров' },
+            { label:'Товары',           value:products.length,    icon:'', sub:'товаров' },
           ].map(s => (
             <div key={s.label} style={{
               background:'rgba(255,255,255,.07)',
@@ -257,7 +257,7 @@ export default function PremiumDashboard({ items, semifinished, products, catego
           <div style={{ background:'#fff', border:'1px solid #ede9e0', borderRadius:24, padding:'22px 24px', boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
             <div style={{ fontWeight:800, fontSize:15, color:'#1a1a1a', marginBottom:18, letterSpacing:'-.02em' }}>Статус системы</div>
             {[
-              { label:'Локальное хранение', status:'Активно', ok:true, icon:'⊙' },
+              { label:'Хранилище данных', status: isRemote ? 'Supabase (облако)' : 'Локально (офлайн)', ok: isRemote, icon:'⊙' },
               { label:'Данные блюд', status:items.length > 0 ? `${items.length} записей` : 'Пусто', ok:items.length > 0, icon:'🗂️' },
               { label:'Резервная копия', status:'Настройте', ok:false, icon:'🔒' },
               { label:'AI Ассистент', status:'Ожидает API', ok:false, icon:'✦' },

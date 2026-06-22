@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 export const SEMIFINISHED_STORAGE_KEY = 'klevo_semifinished'
 
 export const SEMIFINISHED_STATUS_LABELS = {
-  draft: 'Черновик',
+  processing: 'На проработке',
   active: 'Активный',
   archived: 'Архив',
 }
@@ -25,13 +25,20 @@ export function createEmptySemifinished() {
     unit: 'г',
     category: '',
     categoryPath: '',
-    output: '',
+    plannedOutput: '1000',
+    actualOutput: '',
     composition: '',
+    rows: [], // норматив на 1 кг выхода (после пересчёта)
+    developmentIngredients: [], // фактическая закладка при проработке
     cookingMethod: '',
     description: '',
-    status: 'active',
+    status: 'processing',
     photo: null,
     files: [],
+    inputWeight: '',
+    lossWeight: '',
+    lossPercent: '',
+    isRecalculatedFor1kg: false, // флаг для UX: показывает что пересчитано, ждёт утверждения
     createdAt: now,
     updatedAt: now,
   }
@@ -46,13 +53,20 @@ export function normalizeSemifinished(item = {}) {
     unit: item.unit || item['Ед. изм.'] || item['Ед изм'] || 'г',
     category: item.category || item['Категория'] || item.group || '',
     categoryPath: item.categoryPath || item['Путь категории'] || item['Группа'] || item.category || '',
-    output: item.output || item['Выход'] || '',
+    plannedOutput: item.plannedOutput || item.output || item['Выход'] || '1000',
+    actualOutput: item.actualOutput || '',
     composition: item.composition || item['Состав'] || item.semifinished || '',
+    rows: Array.isArray(item.rows) ? item.rows : [], // норматив на 1 кг
+    developmentIngredients: Array.isArray(item.developmentIngredients) ? item.developmentIngredients : [], // фактическая закладка
     cookingMethod: item.cookingMethod || item['Способ приготовления'] || item['Технология'] || '',
     description: item.description || item['Описание'] || '',
-    status: item.status || 'active',
+    status: (item.status === 'draft' ? 'processing' : item.status) || 'processing',
     photo: item.photo || null,
     files: Array.isArray(item.files) ? item.files : [],
+    inputWeight: item.inputWeight || '',
+    lossWeight: item.lossWeight || '',
+    lossPercent: item.lossPercent || '',
+    isRecalculatedFor1kg: item.isRecalculatedFor1kg || false,
     createdAt: item.createdAt || now,
     updatedAt: item.updatedAt || now,
   }

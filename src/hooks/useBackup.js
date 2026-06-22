@@ -13,12 +13,54 @@ export const BACKUP_VERSION = 1
 
 // Все ключи хранения, которые входят в полный бэкап.
 // Если в будущем появятся новые хранилища — добавить сюда.
+// ВАЖНО: значения по этим ключам должны быть МАССИВАМИ объектов с полем id —
+// для них работает общая merge/replace-логика restoreBackup() ниже.
 export const STORAGE_KEYS = {
   dishes:      'academy_printable_reference_ttk_v1',
   nomenclature:'klevo_nomenclature',
   products:    'klevo_products',
   semifinished:'klevo_semifinished',
   categories:  'klevo_ttk_categories_v1',
+  collections: 'chefcloud_collections_v1',
+  productionTasks: 'chefcloud_production_tasks',
+}
+
+// Хранится не массивом, а объектом { tasks, comments, manualLinks, uploads } —
+// обрабатывается отдельно от STORAGE_KEYS (см. collectBackup/restoreBackup).
+export const WORKFLOW_STORAGE_KEY = 'ttk_network_workflow_v1'
+
+function emptyWorkflow() {
+  return { tasks: [], comments: [], manualLinks: [], uploads: [] }
+}
+
+// Слияние массива объектов с полем id: запись из файла побеждает при совпадении id,
+// записи без id просто добавляются в конец (тот же принцип, что и в restoreBackup ниже).
+function mergeArrayById(current = [], incoming = []) {
+  const map = new Map(
+    (Array.isArray(current) ? current : []).filter(item => item && item.id).map(item => [item.id, item])
+  )
+  ;(Array.isArray(incoming) ? incoming : []).forEach(item => {
+    if (item && item.id) map.set(item.id, item)
+  })
+  const withoutId = (Array.isArray(incoming) ? incoming : []).filter(item => !item?.id)
+  return [...map.values(), ...withoutId]
+}
+
+// manualLinks не имеют поля id — уникальны по паре restaurant+dishId (см. addManualLink в useWorkflowStore.js).
+function mergeManualLinks(current = [], incoming = []) {
+  const key = link => `${link?.restaurant}__${link?.dishId}`
+  const map = new Map((Array.isArray(current) ? current : []).map(link => [key(link), link]))
+  ;(Array.isArray(incoming) ? incoming : []).forEach(link => map.set(key(link), link))
+  return Array.from(map.values())
+}
+
+function mergeWorkflow(current, incoming) {
+  return {
+    tasks:       mergeArrayById(current.tasks, incoming.tasks),
+    comments:    mergeArrayById(current.comments, incoming.comments),
+    manualLinks: mergeManualLinks(current.manualLinks, incoming.manualLinks),
+    uploads:     mergeArrayById(current.uploads, incoming.uploads),
+  }
 }
 
 function safeRead(key) {
@@ -52,6 +94,9 @@ export function collectBackup() {
   const products    = safeRead(STORAGE_KEYS.products)     ?? []
   const semifinished= safeRead(STORAGE_KEYS.semifinished) ?? []
   const categories  = safeRead(STORAGE_KEYS.categories)   ?? []
+  const collections = safeRead(STORAGE_KEYS.collections)  ?? []
+  const productionTasks = safeRead(STORAGE_KEYS.productionTasks) ?? []
+  const workflow    = safeRead(WORKFLOW_STORAGE_KEY) ?? emptyWorkflow()
 
   return {
     // Метаданные бэкапа — помогают при восстановлении понять, откуда файл.
@@ -66,6 +111,9 @@ export function collectBackup() {
         products:     Array.isArray(products)     ? products.length     : 0,
         semifinished: Array.isArray(semifinished) ? semifinished.length : 0,
         categories:   Array.isArray(categories)   ? categories.length   : 0,
+        collections:  Array.isArray(collections)  ? collections.length  : 0,
+        productionTasks: Array.isArray(productionTasks) ? productionTasks.length : 0,
+        workflowTasks: Array.isArray(workflow?.tasks) ? workflow.tasks.length : 0,
       },
     },
     dishes,
@@ -73,6 +121,9 @@ export function collectBackup() {
     products,
     semifinished,
     categories,
+    collections,
+    productionTasks,
+    workflow,
   }
 }
 
@@ -153,6 +204,30 @@ export function restoreBackup(backupData, mode = 'merge') {
     } else {
       errors.push(section)
     }
+  }
+
+  // Workflow — отдельная секция: хранится объектом { tasks, comments, manualLinks, uploads },
+  // а не массивом, поэтому общая merge/replace-логика выше для неё не подходит.
+  const incomingWorkflow = backupData.workflow
+  if (incomingWorkflow && typeof incomingWorkflow === 'object' && !Array.isArray(incomingWorkflow)) {
+    const finalWorkflow = mode === 'replace'
+      ? {
+          tasks:       Array.isArray(incomingWorkflow.tasks)       ? incomingWorkflow.tasks       : [],
+          comments:    Array.isArray(incomingWorkflow.comments)    ? incomingWorkflow.comments    : [],
+          manualLinks: Array.isArray(incomingWorkflow.manualLinks) ? incomingWorkflow.manualLinks : [],
+          uploads:     Array.isArray(incomingWorkflow.uploads)     ? incomingWorkflow.uploads     : [],
+        }
+      : mergeWorkflow(safeRead(WORKFLOW_STORAGE_KEY) || emptyWorkflow(), incomingWorkflow)
+
+    const success = safeWrite(WORKFLOW_STORAGE_KEY, finalWorkflow)
+    if (success) {
+      counts.workflowTasks = (finalWorkflow.tasks || []).length
+    } else {
+      errors.push('workflow')
+    }
+  } else {
+    // Секция отсутствует в файле (старый бэкап) — не трогаем текущие данные.
+    counts.workflowTasks = 0
   }
 
   if (errors.length > 0) {

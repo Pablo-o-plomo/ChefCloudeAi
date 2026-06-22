@@ -18,6 +18,7 @@ import SemifinishedPage from './pages/SemifinishedPage.jsx'
 import Placeholder from './pages/Placeholder.jsx'
 import AiAssistantPage from './pages/AiAssistantPage.jsx'
 import BackupSection from './components/BackupSection.jsx'
+import ClearDataSection from './components/ClearDataSection.jsx'
 import PremiumDashboard from './pages/Dashboard.premium.jsx'
 import AnalyticsPage from './pages/AnalyticsPage.jsx'
 import ProductionPage from './pages/ProductionPage.jsx'
@@ -31,20 +32,50 @@ import { useTrialStore } from './hooks/useTrial.js'
 // Верхнеуровневая навигация ChefCloud. 'list'/'create'/'view' — экраны раздела "Меню"
 // (внутренние имена секций и хранилище данных оставлены прежними, чтобы не трогать
 // уже сохранённые блюда пользователей — меняется только то, что видно в интерфейсе).
+//
+// MVP-редизайн: каждый пункт принадлежит одной из трёх групп сайдбара —
+// 'main' (Основная работа), 'ai' (AI), 'tools' (Инструменты). Пункты без этих
+// групп (group: 'hidden') в сайдбаре не показываются вообще, но id/Icon/label
+// сохранены — страница и прямой переход по-прежнему работают (pageTitle берёт
+// label отсюда же), только пункт меню скрыт.
 const NAV_ITEMS = [
-  { id: 'home',        label: 'Дашборд',           Icon: HomeIcon },
-  { id: 'list',        label: 'Меню',               Icon: MenuIcon },
-  { id: 'menu_arch',   label: 'Конструктор меню',   Icon: SparkleIcon },
-  { id: 'semifinished',label: 'Полуфабрикаты',      Icon: LayersIcon },
-  { id: 'products',    label: 'Склад',              Icon: PackageIcon },
-  { id: 'production',  label: 'Производство',       Icon: FlameIcon },
-  { id: 'print',       label: 'Печать',             Icon: PrinterIcon },
-  { id: 'quality',     label: 'Контроль качества',  Icon: CheckCircleIcon },
-  { id: 'ai',          label: 'AI Ассистент',       Icon: BotIcon },
-  { id: 'analytics',   label: 'Аналитика',          Icon: BarChartIcon },
-  { id: 'settings',    label: 'Настройки',          Icon: SettingsIcon },
-  { id: 'pricing',     label: 'Тарифы',             Icon: BarChartIcon },
+  { id: 'home',        label: 'Дашборд',           Icon: HomeIcon,        group: 'hidden' },
+  { id: 'list',        label: 'Меню',               Icon: MenuIcon,        group: 'main' },
+  { id: 'products',    label: 'Товары',             Icon: PackageIcon,     group: 'main' },
+  { id: 'semifinished',label: 'Полуфабрикаты',      Icon: LayersIcon,      group: 'main' },
+  { id: 'production',  label: 'Производство',       Icon: FlameIcon,       group: 'main' },
+  { id: 'ai',          label: 'AI Шеф',             Icon: BotIcon,         group: 'ai' },
+  { id: 'menu_arch',   label: 'AI Menu Engineering', subtitle: 'Соберите оптимальное меню на основе существующих ТТК и рекомендаций AI', Icon: SparkleIcon,     group: 'tools' },
+  { id: 'settings',    label: 'Настройки',          Icon: SettingsIcon,    group: 'tools' },
+  { id: 'print',       label: 'Печать',             Icon: PrinterIcon,     group: 'hidden' },
+  { id: 'quality',     label: 'Контроль качества',  Icon: CheckCircleIcon, group: 'hidden' },
+  { id: 'analytics',   label: 'Аналитика',          Icon: BarChartIcon,    group: 'hidden' },
+  { id: 'pricing',     label: 'Тарифы',             Icon: BarChartIcon,    group: 'hidden' },
 ]
+
+// Заголовки групп сайдбара в порядке отображения.
+const NAV_GROUPS = [
+  { key: 'main', label: 'Основная работа' },
+  { key: 'ai',   label: 'AI' },
+  { key: 'tools',label: 'Инструменты' },
+]
+
+// MVP: временно скрытые из бокового меню разделы (group: 'hidden' выше).
+// Сами страницы, маршруты и компоненты остаются нетронутыми — раздел открывается
+// как обычно при прямом переходе (setSection всё ещё работает), просто пункт не
+// отображается в сайдбаре. Список ниже — только для справки/комментариев в коде.
+const HIDDEN_NAV_IDS = NAV_ITEMS.filter(item => item.group === 'hidden').map(item => item.id)
+
+// MVP: дополнительные «технические»/демо-блоки сайдбара (кнопка обратной связи,
+// плашка Trial/Pro, статус Supabase/localStorage + счётчики) — скрыты по той же
+// логике, что и пункты меню выше: код остаётся, рендер просто выключен флагом.
+const SHOW_SIDEBAR_EXTRAS = false
+
+// MVP: в разделе "Настройки" скрыты технический блок "Статус системы"
+// (Supabase/Backend/AI/Синхронизация) и блок "Номенклатура" + карточка-навигатор
+// по страницам (О сервисе/Тарифы/Конфиденциальность/...) — см. компонент Settings.
+const SHOW_SYSTEM_STATUS = false
+const SHOW_NOMENCLATURE_CARD = false
 
 const PLACEHOLDER_SECTIONS = {
   production: {
@@ -111,7 +142,7 @@ function makeCombinedNomenclature(nomenclature, products, semifinished) {
   return Array.from(map.values())
 }
 
-function Settings({ onOpenNomenclature, nomenclatureCount, onNavigate }) {
+function Settings({ onOpenNomenclature, nomenclatureCount, onNavigate, isRemote }) {
   const card = {
     background:'#fff', border:'1px solid #e8e2d8',
     borderRadius:20, padding:'24px 28px',
@@ -121,29 +152,41 @@ function Settings({ onOpenNomenclature, nomenclatureCount, onNavigate }) {
   const sectionTitle = { fontSize:15, fontWeight:800, color:'#1a1a1a', letterSpacing:'-.02em', margin:'0 0 4px' }
   const sectionDesc  = { fontSize:13, color:'#a39f98', margin:'0 0 18px', lineHeight:1.6 }
 
+  // Статус хранения/синхронизации — берётся из useReferenceTtkStore (isRemote),
+  // тот же источник правды, что и в Dashboard и в сайдбаре.
+  const statusRows = [
+    { icon:'', label:'Хранение данных', value:'localStorage браузера', status:'Активно', ok:true },
+    isRemote
+      ? { icon:'', label:'Backend / сервер', value:'Supabase (облако)', status:'Подключено', ok:true }
+      : { icon:'', label:'Backend / сервер', value:'Не подключён', status:'Не используется', ok:false },
+    { icon:'', label:'AI нейросеть', value:'API ключ не настроен', status:'Заглушка', ok:false },
+    isRemote
+      ? { icon:'', label:'Синхронизация', value:'Supabase (облако)', status:'Активна', ok:true }
+      : { icon:'', label:'Синхронизация', value:'Локально (офлайн)', status:'Локально', ok:null },
+  ]
+
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:16, maxWidth:720 }} className="cc-fade-in">
       <div>
         <h1 style={{ fontSize:26, fontWeight:900, color:'#1a1a1a', letterSpacing:'-.04em', margin:'0 0 6px' }}>Настройки</h1>
-        <p style={{ fontSize:13.5, color:'#a39f98', margin:0 }}>Управление данными, резервными копиями и интеграциями</p>
+        <p style={{ fontSize:13.5, color:'#a39f98', margin:0 }}>Управление данными и резервными копиями</p>
       </div>
 
+      {/* Статус системы (Supabase/Backend/AI/Синхронизация) — скрыт для MVP:
+          показывает технические детали реализации, которые не нужны шефу
+          в повседневной работе. Код и statusRows выше сохранены, не удалены. */}
+      {SHOW_SYSTEM_STATUS && (
       <div style={card}>
         <p style={sectionTitle}>🔧 Статус системы</p>
         <p style={sectionDesc}>Текущее состояние хранилища и сервисов</p>
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-          {[
-            { icon:'', label:'Хранение данных', value:'localStorage браузера', status:'Активно', ok:true },
-            { icon:'', label:'Backend / сервер', value:'Не подключён', status:'Не используется', ok:false },
-            { icon:'', label:'AI нейросеть', value:'API ключ не настроен', status:'Заглушка', ok:false },
-            { icon:'', label:'Синхронизация', value:'Не настроена', status:'Локально', ok:null },
-          ].map(row => (
+          {statusRows.map(row => (
             <div key={row.label} style={{
               display:'flex', alignItems:'center', gap:14,
               padding:'12px 16px', borderRadius:14,
               background:'#faf8f4', border:'1px solid #f0ebe2',
             }}>
-              
+
               <div style={{ flex:1 }}>
                 <div style={{ fontWeight:700, fontSize:13.5, color:'#1a1a1a' }}>{row.label}</div>
                 <div style={{ fontSize:12, color:'#a39f98' }}>{row.value}</div>
@@ -159,13 +202,18 @@ function Settings({ onOpenNomenclature, nomenclatureCount, onNavigate }) {
           ))}
         </div>
       </div>
+      )}
 
-      <div style={card}>
-        <p style={sectionTitle}>💾 Резервное копирование</p>
-        <p style={sectionDesc}>Экспорт и импорт всех данных одним файлом — блюда, П/Ф, склад, категории и номенклатура</p>
-        <BackupSection />
-      </div>
+      {/* Резервная копия + Импорт и экспорт — теперь два отдельных блока внутри
+          BackupSection (см. components/BackupSection.jsx), без слова JSON в тексте. */}
+      <BackupSection />
 
+      <ClearDataSection />
+
+      {/* Карточка-навигатор по страницам (О сервисе/Тарифы/Конфиденциальность/...)
+          и блок "Номенклатура" — убраны из Настроек для MVP (не входят в список
+          "оставить только"). Код ниже сохранён, просто не рендерится. */}
+      {SHOW_NOMENCLATURE_CARD && (
       <div style={card}>
         <p style={sectionTitle}>📋 Номенклатура</p>
         <p style={sectionDesc}>Общий справочник продуктов для автоподстановки в состав блюд. Сейчас: {nomenclatureCount} позиций.</p>
@@ -176,7 +224,9 @@ function Settings({ onOpenNomenclature, nomenclatureCount, onNavigate }) {
           color:'#16332b', boxShadow:'0 1px 3px rgba(0,0,0,.05)',
         }}>Открыть номенклатуру →</button>
       </div>
+      )}
 
+      {SHOW_NOMENCLATURE_CARD && (
       <div style={{ ...card }}>
         <p style={sectionTitle}>Информация</p>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
@@ -191,16 +241,15 @@ function Settings({ onOpenNomenclature, nomenclatureCount, onNavigate }) {
           ))}
         </div>
       </div>
+      )}
 
+      {/* Информация — упрощено до названия продукта и версии (без стека технологий
+          и роадмапа, это были технические детали реализации). */}
       <div style={{ ...card, background:'linear-gradient(135deg,#16332b,#1f4438)', color:'#fff' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:12 }}>
           <div>
-            <div style={{ fontSize:11, fontWeight:800, color:'#b99150', letterSpacing:'.08em', textTransform:'uppercase', marginBottom:8 }}>ChefCloud</div>
-            <div style={{ fontSize:18, fontWeight:900, marginBottom:8, letterSpacing:'-.03em' }}>Professional Kitchen Platform</div>
-            <div style={{ fontSize:12.5, color:'rgba(255,255,255,.5)', lineHeight:1.7 }}>
-              React 18 + Vite 5 · localStorage · Без backend<br />
-              Следующий этап: облачное хранение и мультиресторанность
-            </div>
+            <div style={{ fontSize:11, fontWeight:800, color:'#b99150', letterSpacing:'.08em', textTransform:'uppercase', marginBottom:8 }}>Информация</div>
+            <div style={{ fontSize:18, fontWeight:900, letterSpacing:'-.03em' }}>ChefCloud Kitchen OS</div>
           </div>
           <div style={{ textAlign:'center', background:'rgba(255,255,255,.08)', borderRadius:14, padding:'14px 20px' }}>
             <div style={{ fontSize:11, color:'rgba(255,255,255,.4)', marginBottom:4 }}>Версия</div>
@@ -223,6 +272,7 @@ export default function App() {
   const {
     items, saveTtk, deleteTtk, duplicateTtk,
     archiveTtk, restoreTtk, exportAll, importAll,
+    source, isRemote, syncError, clearSyncError,
   } = useReferenceTtkStore()
 
   const { categories, addCategory } = useTtkCategoriesStore()
@@ -280,6 +330,13 @@ export default function App() {
     setSection('create')
   }
 
+  function handleUpdateCategory(itemId, newCategory) {
+    const item = items.find(i => i.id === itemId)
+    if (item) {
+      saveTtk({ ...item, category: newCategory })
+    }
+  }
+
   function createItem() {
     setEditing(createEmptyReferenceTtk())
     setInitialTab('main')
@@ -313,6 +370,15 @@ export default function App() {
     }
   }
 
+  function handleSaveNomenclatureItem(item) {
+    // Роутим в нужную функцию в зависимости от source
+    if (item.source === 'semifinished') {
+      saveSemifinished(item) // Сохраняем как полуфабрикат
+    } else {
+      saveProduct(item) // Сохраняем как товар (по умолчанию)
+    }
+  }
+
   function handleRestore(id) {
     restoreTtk(id)
   }
@@ -323,7 +389,7 @@ export default function App() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `reference-ttk-export-${new Date().toISOString().slice(0, 10)}.json`
+    link.download = `ChefCloud-Menu-${new Date().toISOString().slice(0, 10)}.json`
     link.click()
     URL.revokeObjectURL(url)
   }
@@ -383,52 +449,47 @@ export default function App() {
         {/* Divider */}
         <div style={{ height: 1, background: 'rgba(255,255,255,.06)', margin: '0 14px 10px' }} />
 
-        {/* Navigation */}
+        {/* Navigation — три группы (Основная работа / AI / Инструменты), см. NAV_GROUPS.
+            Скрытые разделы (group: 'hidden' в NAV_ITEMS) сюда не попадают вообще,
+            но сами страницы и переход по id (setSection) продолжают работать. */}
         <nav style={{ flex: 1, padding: '2px 8px' }}>
-          <div className="cc-section-label">Основное</div>
-          {NAV_ITEMS.slice(0, 6).map((item, i) => {
-            const active = section === item.id || (item.id === 'list' && (section === 'view' || section === 'create'))
+          {NAV_GROUPS.map((group, gi) => {
+            const groupItems = NAV_ITEMS.filter(item => item.group === group.key)
+            if (groupItems.length === 0) return null
             return (
-              <button
-                key={item.id}
-                className={`cc-nav-item${active ? ' active' : ''}`}
-                onClick={() => setSection(item.id === 'list' ? 'list' : item.id)}
-                style={{ animationDelay: `${i * 0.04}s` }}
-              >
-                <span className="cc-nav-dot" />
-                <span style={{ display:'flex', alignItems:'center', opacity: active ? 1 : .6 }}><item.Icon /></span>
-                <span>{item.label}</span>
-                {item.id === 'list' && items.length > 0 && (
-                  <span style={{
-                    marginLeft: 'auto', fontSize: 11, fontWeight: 700,
-                    background: active ? 'rgba(255,255,255,.15)' : 'rgba(255,255,255,.08)',
-                    color: active ? '#fff' : 'rgba(255,255,255,.4)',
-                    padding: '2px 7px', borderRadius: 999,
-                  }}>{items.length}</span>
-                )}
-              </button>
-            )
-          })}
-
-          <div className="cc-section-label" style={{ marginTop: 8 }}>Инструменты</div>
-          {NAV_ITEMS.slice(6).map((item, i) => {
-            const active = section === item.id
-            return (
-              <button
-                key={item.id}
-                className={`cc-nav-item${active ? ' active' : ''}`}
-                onClick={() => setSection(item.id)}
-                style={{ animationDelay: `${(i + 5) * 0.04}s` }}
-              >
-                <span className="cc-nav-dot" />
-                <span style={{ display:'flex', alignItems:'center', opacity: active ? 1 : .6 }}><item.Icon /></span>
-                <span>{item.label}</span>
-              </button>
+              <div key={group.key}>
+                <div className="cc-section-label" style={{ marginTop: gi === 0 ? 0 : 8 }}>{group.label}</div>
+                {groupItems.map((item, i) => {
+                  const active = section === item.id || (item.id === 'list' && (section === 'view' || section === 'create'))
+                  return (
+                    <button
+                      key={item.id}
+                      className={`cc-nav-item${active ? ' active' : ''}`}
+                      onClick={() => setSection(item.id === 'list' ? 'list' : item.id)}
+                      title={item.subtitle || ''}
+                      style={{ animationDelay: `${i * 0.04}s` }}
+                    >
+                      <span className="cc-nav-dot" />
+                      <span style={{ display:'flex', alignItems:'center', opacity: active ? 1 : .6 }}><item.Icon /></span>
+                      <span>{item.label}</span>
+                      {item.id === 'list' && items.length > 0 && (
+                        <span style={{
+                          marginLeft: 'auto', fontSize: 11, fontWeight: 700,
+                          background: active ? 'rgba(255,255,255,.15)' : 'rgba(255,255,255,.08)',
+                          color: active ? '#fff' : 'rgba(255,255,255,.4)',
+                          padding: '2px 7px', borderRadius: 999,
+                        }}>{items.length}</span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
             )
           })}
         </nav>
 
-        {/* Feedback button */}
+        {/* Feedback button (скрыт по умолчанию для MVP — см. SHOW_SIDEBAR_EXTRAS) */}
+        {SHOW_SIDEBAR_EXTRAS && (
         <a
           href="https://t.me/chefcloud_support"
           target="_blank"
@@ -447,9 +508,10 @@ export default function App() {
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
           Обратная связь
         </a>
+        )}
 
-        {/* Trial status */}
-        {trial && trial.plan !== 'pro' && (
+        {/* Trial status (скрыт по умолчанию для MVP — см. SHOW_SIDEBAR_EXTRAS) */}
+        {SHOW_SIDEBAR_EXTRAS && trial && trial.plan !== 'pro' && (
           <button
             onClick={() => setSection('pricing')}
             style={{
@@ -467,7 +529,9 @@ export default function App() {
           </button>
         )}
 
-        {/* Bottom status */}
+        {/* Bottom status (скрыт по умолчанию для MVP — показывает Supabase/localStorage,
+            см. SHOW_SIDEBAR_EXTRAS) */}
+        {SHOW_SIDEBAR_EXTRAS && (
         <div style={{
           margin: '8px',
           padding: '12px 14px',
@@ -476,13 +540,13 @@ export default function App() {
           border: '1px solid rgba(255,255,255,.06)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-            <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80' }} />
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,.5)', fontWeight: 600 }}>Локальное хранение</span>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: isRemote ? '#4ade80' : '#9ca3af' }} />
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,.5)', fontWeight: 600 }}>{isRemote ? 'Supabase (облако)' : 'Локально (офлайн)'}</span>
           </div>
           {[
             { label: 'Блюд', value: items.length },
             { label: 'П/Ф', value: semifinished.length },
-            { label: 'Склад', value: products.length },
+            { label: 'Товары', value: products.length },
           ].map(row => (
             <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
               <span style={{ fontSize: 11, color: 'rgba(255,255,255,.35)' }}>{row.label}</span>
@@ -490,6 +554,7 @@ export default function App() {
             </div>
           ))}
         </div>
+        )}
       </aside>
 
       <main style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column' }}>
@@ -520,6 +585,30 @@ export default function App() {
           </div>
         </header>
 
+        {syncError && (
+          <div style={{
+            margin: '12px 28px 0',
+            padding: '10px 16px',
+            borderRadius: 12,
+            background: '#fffbeb',
+            border: '1px solid #fde68a',
+            color: '#92400e',
+            fontSize: 13,
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+          }}>
+            <span>⚠️ {syncError}</span>
+            <button
+              onClick={clearSyncError}
+              aria-label="Скрыть предупреждение"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#92400e', fontWeight: 700, fontSize: 13, lineHeight: 1, padding: 4 }}
+            >✕</button>
+          </div>
+        )}
+
         {section === 'ai' ? (
           <AiAssistantPage />
         ) : (
@@ -527,6 +616,7 @@ export default function App() {
           {section === 'home' && (
             <PremiumDashboard
               items={items}
+              isRemote={isRemote}
               semifinished={semifinished}
               products={products}
               categories={categories}
@@ -548,6 +638,7 @@ export default function App() {
               onDownload={downloadJson}
               onArchive={handleArchive}
               onRestore={handleRestore}
+              onUpdateCategory={handleUpdateCategory}
               collections={collections}
               onCreateCollection={createCollection}
               onUpdateCollection={updateCollection}
@@ -565,7 +656,7 @@ export default function App() {
               nomenclature={combinedNomenclature}
               categories={categories}
               onAddCategory={addCategory}
-              onSaveNomenclatureItem={saveNomenclatureItem}
+              onSaveNomenclatureItem={handleSaveNomenclatureItem}
               onCancel={() => setSection('list')}
               onSave={handleSave}
             />
@@ -608,6 +699,8 @@ export default function App() {
               onSave={saveSemifinished}
               onDelete={deleteSemifinished}
               onImport={importSemifinished}
+              onSaveProduct={saveProduct}
+              onSaveSemifinishedItem={saveSemifinished}
             />
           )}
 
@@ -630,6 +723,7 @@ export default function App() {
               onOpenNomenclature={() => setSection('nomenclature')}
               nomenclatureCount={nomenclature.length}
               onNavigate={setSection}
+              isRemote={isRemote}
             />
           )}
         </div>
